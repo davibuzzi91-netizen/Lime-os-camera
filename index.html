@@ -720,6 +720,24 @@ body.reading-mode #reading-overlay { display:block; }
 .cam-flash-flare.flash { animation: camFlash .25s ease; }
 @keyframes camFlash { 0%{opacity:0} 15%{opacity:.85} 100%{opacity:0} }
 
+/* ===== 1.8.8 — Camera Control: modos extras ===== */
+.cam-mode-btn[data-mode="cinema"].active, .cam-mode-btn[data-mode="retrato"].active, .cam-mode-btn[data-mode="noturna"].active, .cam-mode-btn[data-mode="retro"].active { color:var(--lime-yellow); }
+.cam-mode-scroll { display:flex; justify-content:flex-start; overflow-x:auto; gap:18px; padding:6px 14px 10px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.cam-mode-scroll::-webkit-scrollbar { display:none; }
+.cam-mode-scroll .cam-mode-btn { flex-shrink:0; white-space:nowrap; }
+.cam-dof-badge { position:absolute; top:58px; left:12px; z-index:5; background:rgba(0,0,0,.55); color:var(--text-dim); font-size:11px; padding:4px 9px; border-radius:var(--r-pill); display:none; }
+.cam-dof-badge.show { display:block; }
+/* Modo Noturno: botão lua + progresso */
+.cam-shutter-btn.moon-processing { background:linear-gradient(145deg,#2b2e55,#15172b); border-color:rgba(217,201,74,.5); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.cam-shutter-btn.moon-processing::before { content:'🌙'; font-size:30px; animation: camMoonPulse 1.6s ease-in-out infinite; }
+@keyframes camMoonPulse { 0%,100%{ transform:scale(1); opacity:.85 } 50%{ transform:scale(1.12); opacity:1 } }
+.cam-night-ring { position:absolute; inset:-4px; border-radius:50%; pointer-events:none; }
+.cam-night-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+.cam-night-ring circle { fill:none; stroke-width:3; }
+.cam-night-ring .cnr-bg { stroke:rgba(255,255,255,.15); }
+.cam-night-ring .cnr-fg { stroke:var(--lime-yellow); stroke-linecap:round; transition:stroke-dashoffset .3s linear; }
+.cam-night-label { position:absolute; bottom:-22px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--text-dim); white-space:nowrap; }
+
 .gal-wrap { display:flex; flex-direction:column; height:100%; }
 .gal-topbar { display:flex; align-items:center; gap:8px; padding:10px 14px; }
 .gal-title { font-size:var(--fs-lg); font-weight:700; flex:1; }
@@ -786,6 +804,54 @@ body.reading-mode #reading-overlay { display:block; }
 .edi-actions { display:flex; gap:8px; padding:10px 14px calc(12px + var(--safe-bottom)); }
 .edi-actions .btn { flex:1; }
 .edi-compare-btn { position:absolute; top:10px; right:10px; z-index:3; }
+
+/* =====================================================================
+   LIMEOS 1.8 — Lime Maps
+   ===================================================================== */
+.map-wrap { position:relative; width:100%; height:100%; overflow:hidden; background:#1a1a1a; }
+.map-viewport { position:absolute; inset:0; overflow:hidden; touch-action:none; cursor:grab; }
+.map-viewport.grabbing { cursor:grabbing; }
+.map-tiles { position:absolute; left:0; top:0; will-change:transform; }
+.map-tile { position:absolute; width:256px; height:256px; background:#242424; }
+.map-tile img { width:100%; height:100%; display:block; object-fit:cover; }
+.map-attribution { position:absolute; bottom:4px; right:6px; font-size:10px; color:rgba(255,255,255,.65); background:rgba(0,0,0,.4); padding:2px 6px; border-radius:6px; z-index:5; pointer-events:none; }
+.map-overlay-svg { position:absolute; left:0; top:0; pointer-events:none; }
+.map-marker { position:absolute; transform:translate(-50%,-100%); font-size:28px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); pointer-events:none; z-index:4; }
+.map-marker.me { font-size:0; width:18px; height:18px; border-radius:50%; background:#4C8C3C; border:3px solid #fff; box-shadow:0 0 0 4px rgba(76,140,60,.35); transform:translate(-50%,-50%); }
+.map-zoom-ctl { position:absolute; right:10px; bottom:96px; display:flex; flex-direction:column; border-radius:var(--r-sm); overflow:hidden; z-index:5; }
+.map-zoom-ctl button { width:40px; height:40px; background:rgba(28,28,28,.9); color:#fff; border:none; font-size:20px; border-bottom:1px solid rgba(255,255,255,.1); }
+.map-locate-btn { position:absolute; right:10px; bottom:200px; width:40px; height:40px; border-radius:50%; background:rgba(28,28,28,.9); border:none; color:#fff; font-size:18px; z-index:5; }
+.map-top { position:absolute; top:0; left:0; right:0; padding:10px 12px; z-index:6; background:linear-gradient(rgba(0,0,0,.55), transparent); display:flex; flex-direction:column; gap:8px; }
+.map-search-row { display:flex; gap:8px; align-items:center; }
+.map-search-row input { flex:1; background:rgba(28,28,28,.92); }
+.map-search-row .gal-icon-btn { background:rgba(28,28,28,.92); }
+.map-results { background:var(--bg-elevated); border-radius:var(--r-md); margin-top:2px; max-height:40vh; overflow-y:auto; }
+.map-result-row { display:block; width:100%; text-align:left; padding:11px 14px; border:none; background:none; color:#fff; border-bottom:1px solid rgba(255,255,255,.06); font-size:var(--fs-sm); }
+.map-result-row .mr-sub { display:block; color:var(--text-dim); font-size:var(--fs-xs); margin-top:2px; }
+.map-sheet { position:absolute; left:0; right:0; bottom:0; z-index:6; background:var(--bg-elevated); border-radius:var(--r-lg) var(--r-lg) 0 0; padding:14px 16px calc(14px + var(--safe-bottom)); box-shadow:0 -8px 24px rgba(0,0,0,.4); }
+.map-sheet .ms-title { font-size:var(--fs-lg); font-weight:700; }
+.map-sheet .ms-sub { color:var(--text-dim); font-size:var(--fs-sm); margin-top:2px; }
+.map-sheet-actions { display:flex; gap:8px; margin-top:12px; }
+.map-sheet-actions .btn { flex:1; }
+.map-route-summary { position:absolute; left:0; right:0; bottom:0; z-index:6; background:var(--bg-elevated); border-radius:var(--r-lg) var(--r-lg) 0 0; padding:14px 16px calc(14px + var(--safe-bottom)); box-shadow:0 -8px 24px rgba(0,0,0,.4); }
+.map-route-summary .mrs-stats { display:flex; gap:16px; margin:4px 0 10px; }
+.map-route-summary .mrs-stat b { font-size:var(--fs-xl); color:var(--lime-yellow); }
+.map-route-summary .mrs-stat span { display:block; font-size:var(--fs-xs); color:var(--text-dim); }
+.map-profile-row { display:flex; gap:6px; margin-bottom:10px; }
+.map-profile-btn { flex:1; background:var(--bg-dark); border:none; color:var(--text-dim); padding:8px; border-radius:var(--r-sm); font-size:var(--fs-sm); }
+.map-profile-btn.active { background:var(--lime-yellow); color:#000; font-weight:700; }
+.map-nav-wrap { position:absolute; inset:0; z-index:15; display:flex; flex-direction:column; }
+.map-nav-banner { padding:calc(var(--statusbar-h) + var(--safe-top) + 10px) 16px 16px; background:var(--lime-green); display:flex; align-items:center; gap:14px; }
+.map-nav-banner .mnb-icon { font-size:34px; }
+.map-nav-banner .mnb-instr { flex:1; font-size:var(--fs-lg); font-weight:700; line-height:1.25; }
+.map-nav-banner .mnb-dist { font-size:var(--fs-sm); opacity:.9; margin-top:2px; font-weight:500; }
+.map-nav-map { flex:1; position:relative; }
+.map-nav-bottom { padding:12px 16px calc(14px + var(--safe-bottom)); background:var(--bg-elevated); display:flex; align-items:center; gap:12px; }
+.map-nav-bottom .mnbo-eta b { font-size:var(--fs-lg); }
+.map-nav-bottom .mnbo-eta span { display:block; color:var(--text-dim); font-size:var(--fs-xs); }
+.map-nav-stop { margin-left:auto; }
+.map-state-overlay { position:absolute; inset:0; background:rgba(0,0,0,.85); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:30px; text-align:center; z-index:20; }
+.map-state-overlay .msi { font-size:38px; }
 </style>
 </head>
 <body>
@@ -4807,7 +4873,7 @@ if(pinMode==='enter') renderAll();
    Cada módulo é um objeto isolado; comunicam-se por Core.bus.
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
-const VERSION = '1.7.1';
+const VERSION = '1.8.8';
 
 /* ---------- Core: barramento de eventos ---------- */
 const Core = {
@@ -5266,9 +5332,10 @@ const APPS = {
   browser:    { name: 'Lime Browser', glyph: '🌐', info: 'Navegador baseado em iframe, com histórico próprio', store: true, since: '1.3' },
   lifeos:     { name: 'LifeOS', glyph: '🗓️', info: 'Seu sistema pessoal de produtividade, incorporado', store: true, since: '1.3' },
   camera:     { name: 'Lime Camera', glyph: '📷', info: 'Câmera real: fotos e vídeos, com armazenamento próprio', since: '1.7' },
-  gallery:    { name: 'Lime Gallery', glyph: '🖼️', info: 'Galeria de fotos e vídeos: álbuns, favoritos, editor e lixeira', since: '1.7' }
+  gallery:    { name: 'Lime Gallery', glyph: '🖼️', info: 'Galeria de fotos e vídeos: álbuns, favoritos, editor e lixeira', since: '1.7' },
+  maps:       { name: 'Lime Maps', glyph: '🗺️', info: 'Mapa real (OpenStreetMap), busca de endereços e rotas com navegação passo a passo', since: '1.8' }
 };
-const DEFAULT_ORDER = ['settings', 'clock', 'camera', 'gallery', 'music', 'files', 'ai', 'appstore', 'tester', 'about'];
+const DEFAULT_ORDER = ['settings', 'clock', 'camera', 'gallery', 'maps', 'music', 'files', 'ai', 'appstore', 'tester', 'about'];
 /* App Store: apps que só entram na Home depois de "instalados" (nunca forçados pelo sanitize) */
 const STORE_APP_IDS = Object.keys(APPS).filter(id => APPS[id].store);
 
@@ -7425,7 +7492,9 @@ const CHANGELOG = [
   { v: '1.5', desc: 'Lime Arquivos tornou-se um gerenciador completo (pastas reais, importação/exportação, pré-visualização, busca e ordenação) usando um armazenamento real em IndexedDB compartilhado com o novo Lime Música (reprodutor de áudio real). Relógio ganhou alarmes, cronômetro, temporizador e relógio mundial reais. Lime AI ganhou uma interface de chat completa (sem serviço de IA conectado ainda). Tester ganhou diagnóstico real padronizado. App Store passou a indicar desde qual versão cada app está disponível.' },
   { v: '1.6', desc: 'Sistema de widgets extensível na Home: Relógio, Data, Atalho de app, Notas, Bateria/sistema, Música e uma arquitetura aberta para widgets de apps futuros — com grade de células, modo de edição (pressionar e segurar), rascunho recuperável, redimensionamento e prevenção de sobreposição. Animações Liquid Jelly aprimoradas: abrir/fechar/alternar apps agora expande e recolhe a partir da posição real do ícone de origem, com 3 modos configuráveis (Completas/Reduzidas/Desativadas) em Configurações → Acessibilidade.' },
   { v: '1.7', desc: 'Lime Camera: câmera real via getUserMedia, captura de fotos, gravação de vídeos (MediaRecorder), troca de câmera frontal/traseira, flash/torch e zoom reais quando suportados pelo hardware, temporizador e grade de composição. Lime Gallery: biblioteca própria em IndexedDB dedicado, visualizador de fotos, reprodutor de vídeo, álbuns virtuais, favoritos, busca/filtros, seleção múltipla, lixeira recuperável e um editor de imagens completo (recorte, rotação, espelhamento, ajustes e filtros) que sempre salva como cópia, preservando o original.' },
-  { v: '1.7.1', desc: 'Lime Camera e Lime Gallery passaram a ser apps nativos do sistema, já instalados por padrão na Home — não fazem mais parte da App Store opcional.' }
+  { v: '1.7.1', desc: 'Lime Camera e Lime Gallery passaram a ser apps nativos do sistema, já instalados por padrão na Home — não fazem mais parte da App Store opcional.' },
+  { v: '1.8', desc: 'Lime Maps: app nativo de mapas com tiles reais do OpenStreetMap (pan/zoom próprios, sem biblioteca externa), localização real do dispositivo, busca de endereços/lugares via Nominatim, cálculo de rotas reais (distância/duração) via OSRM para carro/bicicleta/a pé, com desenho real do trajeto no mapa e navegação passo a passo usando as instruções reais da rota. Usa serviços públicos do OpenStreetMap — sem chave de API, mas sem SLA de uso comercial; indisponibilidade é comunicada, nunca simulada.' },
+  { v: '1.8.8', desc: 'Lime Camera — Camera Control: quatro novos modos de captura integrados à câmera existente. Cinema (vídeo) e Retrato (foto) aplicam desfoque de fundo via modelo local de segmentação (TensorFlow.js + Selfie Segmentation, carregado sob demanda), com fallback honesto para uma heurística geométrica de campo de profundidade quando o modelo não está disponível. Noturna processa a foto por 10s reais mesmo após soltar o botão (indicador de lua animado), aumentando brilho/contraste e reduzindo ruído a partir dos pixels realmente capturados — sem exposição prolongada simulada. Retro converte a foto final para preto e branco real (luminância, sem grão/sépia). Todos os modos salvam na Lime Gallery existente.' }
 ];
 Apps.about = {
   tab: 'info',
@@ -8265,6 +8334,20 @@ const Diag = {
       try { const lib = await MediaStore.library(); const trash = await MediaStore.trash(); return { result: 'pass', detail: `${lib.length} mídia(s) na biblioteca, ${trash.length} na lixeira.` }; }
       catch (e) { return { result: 'fail', detail: 'Erro: ' + e.message }; }
     });
+    await T('Lime Maps — geolocalização disponível', 'Verifica a API de geolocalização, sem solicitar a posição de fato.', () => Capability.has('geolocation') ? { result: 'pass', detail: 'navigator.geolocation disponível.' } : { result: 'unavailable', detail: 'Geolocalização não exposta por este navegador.' });
+    await T('Lime Maps — decodificação de polyline', 'Testa o decodificador de geometria de rota com uma string de exemplo conhecida.', () => {
+      const coords = MapMath.decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@', 5);
+      const ok = coords.length === 3 && Math.abs(coords[0][0] - 38.5) < 0.01 && Math.abs(coords[0][1] - (-120.2)) < 0.01;
+      return ok ? { result: 'pass', detail: `${coords.length} ponto(s) decodificado(s) corretamente.` } : { result: 'fail', detail: 'Geometria decodificada incorretamente: ' + JSON.stringify(coords) };
+    });
+    await T('Lime Maps — matemática de projeção (tiles)', 'Confere ida e volta lon/lat ↔ pixel na projeção Web Mercator usada pelos tiles.', () => {
+      const z = 12, lat = -23.5505, lon = -46.6333;
+      const x = MapMath.lonToX(lon, z), y = MapMath.latToY(lat, z);
+      const lon2 = MapMath.xToLon(x, z), lat2 = MapMath.yToLat(y, z);
+      const ok = Math.abs(lon - lon2) < 0.001 && Math.abs(lat - lat2) < 0.001;
+      return ok ? { result: 'pass', detail: 'Conversão lon/lat ↔ pixel consistente.' } : { result: 'fail', detail: `Divergência: (${lon},${lat}) → (${lon2},${lat2})` };
+    });
+    await T('Lime Maps — serviços externos (Nominatim/OSRM)', 'Apenas informa a dependência — não testado aqui para não gerar tráfego real contra serviços públicos de terceiros a cada execução do diagnóstico.', () => ({ result: 'unavailable', detail: 'Busca de endereço e rotas dependem de nominatim.openstreetmap.org e router.project-osrm.org (serviços públicos, sem chave). Verifique manualmente abrindo o Lime Maps com conexão à internet.', limitation: 'Serviços públicos de demonstração, sem SLA — podem ficar temporariamente indisponíveis ou limitar a taxa de requisições.' }));
 
     return results;
   },
@@ -8283,6 +8366,9 @@ Apps.camera = {
   stream: null, videoEl: null, devices: [], facing: 'environment', mode: 'photo',
   recorder: null, recChunks: [], recStart: 0, recTimer: null, zoomCap: null,
   timerSecs: 0, gridOn: false, lastThumbUrl: null, busy: false,
+  /* 1.8.8 — Camera Control: modos Cinema/Retrato/Noturna/Retro */
+  nightProcessing: false, nightCancelled: false, cinemaRecording: false, cinemaCanvasStream: null, cinemaRaf: null,
+  segModel: null, segModelState: 'idle' /* idle | loading | ready | unavailable */, segLoadPromise: null,
   build(body) {
     this.body = body; this.mode = 'photo'; this.gridOn = false; this.timerSecs = 0;
     body.innerHTML = `<div class="cam-wrap">
@@ -8299,14 +8385,25 @@ Apps.camera = {
           </div>
         </div>
         <div class="cam-zoom-row" id="cam-zoom-row" style="display:none"><input type="range" class="slider cam-zoom-slider" id="cam-zoom" min="1" max="4" step="0.1" value="1"></div>
+        <div class="cam-dof-badge" id="cam-dof-badge"></div>
       </div>
-      <div class="cam-mode-row">
+      <div class="cam-mode-row cam-mode-scroll">
         <button class="cam-mode-btn jelly" data-mode="photo">FOTO</button>
         <button class="cam-mode-btn jelly" data-mode="video">VÍDEO</button>
+        <button class="cam-mode-btn jelly" data-mode="cinema">CINEMA 🎞️</button>
+        <button class="cam-mode-btn jelly" data-mode="retrato">RETRATO 🪮</button>
+        <button class="cam-mode-btn jelly" data-mode="noturna">NOTURNA 🌒</button>
+        <button class="cam-mode-btn jelly" data-mode="retro">RETRO 🐈‍⬛</button>
       </div>
       <div class="cam-bottom-bar">
         <button class="cam-thumb-btn jelly" id="cam-thumb" title="Última captura">🖼️</button>
-        <button class="cam-shutter-btn jelly" id="cam-shutter"></button>
+        <div style="position:relative">
+          <button class="cam-shutter-btn jelly" id="cam-shutter"></button>
+          <div class="cam-night-ring" id="cam-night-ring" style="display:none">
+            <svg viewBox="0 0 80 80"><circle class="cnr-bg" cx="40" cy="40" r="36"></circle><circle class="cnr-fg" id="cam-night-arc" cx="40" cy="40" r="36" stroke-dasharray="226.19" stroke-dashoffset="226.19"></circle></svg>
+            <div class="cam-night-label" id="cam-night-label"></div>
+          </div>
+        </div>
         <button class="cam-switch-btn jelly" id="cam-switch" title="Trocar câmera">🔄</button>
       </div>
     </div>`;
@@ -8316,7 +8413,8 @@ Apps.camera = {
       recInd: body.querySelector('#cam-rec-ind'), recTime: body.querySelector('#cam-rec-time'),
       zoomRow: body.querySelector('#cam-zoom-row'), zoom: body.querySelector('#cam-zoom'),
       thumb: body.querySelector('#cam-thumb'), shutter: body.querySelector('#cam-shutter'),
-      switchBtn: body.querySelector('#cam-switch'), flashBtn: body.querySelector('#cam-flash-btn'), timerBtn: body.querySelector('#cam-timer-btn')
+      switchBtn: body.querySelector('#cam-switch'), flashBtn: body.querySelector('#cam-flash-btn'), timerBtn: body.querySelector('#cam-timer-btn'),
+      dofBadge: body.querySelector('#cam-dof-badge'), nightRing: body.querySelector('#cam-night-ring'), nightArc: body.querySelector('#cam-night-arc'), nightLabel: body.querySelector('#cam-night-label')
     };
     body.querySelector('#cam-grid-btn').addEventListener('click', () => { this.gridOn = !this.gridOn; this.els.grid.classList.toggle('show', this.gridOn); body.querySelector('#cam-grid-btn').classList.toggle('active', this.gridOn); });
     this.els.timerBtn.addEventListener('click', () => {
@@ -8334,11 +8432,101 @@ Apps.camera = {
     this.refreshThumb();
   },
   onShow() { if (!this.stream) this.start(); },
-  onClose() { this.stopStream(); if (this.recTimer) { clearInterval(this.recTimer); this.recTimer = null; } },
+  onClose() {
+    this.stopStream(); if (this.recTimer) { clearInterval(this.recTimer); this.recTimer = null; }
+    // Nota: o modo Noturna continua processando o quadro já capturado mesmo com o app fechado
+    // (não depende mais do stream/preview), então não cancelamos nightProcessing aqui — a foto
+    // ainda será salva normalmente na Lime Gallery quando os 10s terminarem.
+    if (this.cinemaRecording) { this.stopCinemaRecording(); }
+  },
   setMode(m) {
+    if (this.nightProcessing || this.cinemaRecording || (this.recorder && this.recorder.state === 'recording')) { Core.toast('Finalize a captura/gravação atual antes de trocar de modo.'); return; }
     this.mode = m;
     this.body.querySelectorAll('.cam-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
-    this.els.shutter.classList.toggle('video-mode', m === 'video');
+    this.els.shutter.classList.toggle('video-mode', m === 'video' || m === 'cinema');
+    this.updateDofBadge();
+    if (m === 'retrato' || m === 'cinema') this.ensureSegModel();
+  },
+  updateDofBadge() {
+    if (this.mode !== 'retrato' && this.mode !== 'cinema') { this.els.dofBadge.classList.remove('show'); return; }
+    let txt;
+    if (this.segModelState === 'ready') txt = '🧠 Segmentação local ativa (detecção real do primeiro plano)';
+    else if (this.segModelState === 'loading') txt = '⏳ Carregando modelo de segmentação local…';
+    else txt = '⚠️ Segmentação indisponível — usando desfoque por heurística de profundidade (centro nítido)';
+    this.els.dofBadge.textContent = txt; this.els.dofBadge.classList.add('show');
+  },
+  /* Tenta carregar um modelo leve de segmentação (TensorFlow.js + Selfie Segmentation) via CDN,
+     100% local após o carregamento (sem chamadas de rede por frame, sem backend próprio).
+     Se a rede/CDN não estiver disponível ou o carregamento falhar, cai honestamente para a
+     heurística geométrica de campo de profundidade — nunca finge haver detecção real. */
+  ensureSegModel() {
+    if (this.segModelState === 'ready' || this.segModelState === 'unavailable' || this.segModelState === 'loading') { this.updateDofBadge(); return this.segLoadPromise; }
+    this.segModelState = 'loading'; this.updateDofBadge();
+    this.segLoadPromise = (async () => {
+      try {
+        if (!window.tf) await this.loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.17.0/dist/tf-core.min.js')
+          .then(() => this.loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.17.0/dist/tf-converter.min.js'))
+          .then(() => this.loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.17.0/dist/tf-backend-webgl.min.js'));
+        if (!window.bodySegmentation) await this.loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/body-segmentation@1.0.2/dist/body-segmentation.min.js');
+        if (!window.tf || !window.bodySegmentation) throw new Error('Bibliotecas de segmentação não carregaram.');
+        const model = window.bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation;
+        const segmenter = await window.bodySegmentation.createSegmenter(model, { runtime: 'tfjs', modelType: 'general' });
+        this.segModel = segmenter; this.segModelState = 'ready';
+      } catch (e) {
+        this.segModel = null; this.segModelState = 'unavailable';
+        console.warn('Lime Camera: modelo de segmentação indisponível, usando heurística de profundidade de campo. Motivo:', e && e.message);
+      }
+      this.updateDofBadge();
+    })();
+    return this.segLoadPromise;
+  },
+  loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script'); s.src = src; s.crossOrigin = 'anonymous';
+      s.onload = () => resolve(); s.onerror = () => reject(new Error('Falha ao carregar ' + src));
+      document.head.appendChild(s);
+    });
+  },
+  /* Gera uma máscara binária (1 = primeiro plano) real via modelo de segmentação,
+     ou null se indisponível — quem chama cai para a heurística geométrica nesse caso. */
+  async getSegmentationMask(videoOrCanvas, w, h) {
+    if (this.segModelState !== 'ready' || !this.segModel) return null;
+    try {
+      const segmentation = await this.segModel.segmentPeople(videoOrCanvas);
+      if (!segmentation || !segmentation.length) return null;
+      const maskImg = await segmentation[0].mask.toImageData();
+      const mc = document.createElement('canvas'); mc.width = maskImg.width; mc.height = maskImg.height;
+      mc.getContext('2d').putImageData(maskImg, 0, 0);
+      return mc;
+    } catch (e) { return null; }
+  },
+  /* Aplica desfoque de fundo em um canvas já desenhado com o quadro original (srcCanvas),
+     usando a máscara real do modelo quando disponível, ou a heurística elíptica de campo
+     de profundidade (nítido no centro, desfocado nas bordas) como alternativa honesta. */
+  async applyBackgroundBlur(srcCanvas, w, h) {
+    const out = document.createElement('canvas'); out.width = w; out.height = h;
+    const octx = out.getContext('2d');
+    const blurred = document.createElement('canvas'); blurred.width = w; blurred.height = h;
+    const bctx = blurred.getContext('2d');
+    bctx.filter = 'blur(14px)'; bctx.drawImage(srcCanvas, 0, 0, w, h); bctx.filter = 'none';
+    const mask = await this.getSegmentationMask(srcCanvas, w, h);
+    octx.drawImage(blurred, 0, 0);
+    if (mask) {
+      // máscara real do modelo: recorta o primeiro plano nítido por cima do fundo desfocado
+      const mc2 = document.createElement('canvas'); mc2.width = w; mc2.height = h;
+      const m2ctx = mc2.getContext('2d'); m2ctx.drawImage(mask, 0, 0, w, h);
+      m2ctx.globalCompositeOperation = 'source-in'; m2ctx.drawImage(srcCanvas, 0, 0, w, h);
+      octx.drawImage(mc2, 0, 0);
+    } else {
+      // heurística geométrica: elipse central nítida com borda suave (gradiente radial como máscara)
+      const grad = octx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.18, w / 2, h / 2, Math.min(w, h) * 0.42);
+      grad.addColorStop(0, 'rgba(0,0,0,1)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+      const mctx = mc.getContext('2d'); mctx.fillStyle = grad; mctx.fillRect(0, 0, w, h);
+      mctx.globalCompositeOperation = 'source-in'; mctx.drawImage(srcCanvas, 0, 0, w, h);
+      octx.drawImage(mc, 0, 0);
+    }
+    return out;
   },
   showState(icon, title, msg, actions) {
     const ov = el(`<div class="cam-state-overlay"><span class="csi">${icon}</span><div class="app-title" style="padding:0;font-size:var(--fs-md)">${title}</div><div class="cam-state-msg">${msg}</div></div>`);
@@ -8414,9 +8602,20 @@ Apps.camera = {
     if (this.mode === 'photo') {
       if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; }
       this.capturePhoto();
-    } else {
-      if (this.recorder && this.recorder.state === 'recording') this.stopRecording();
-      else { if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; } this.startRecording(); }
+    } else if (this.mode === 'video' || this.mode === 'cinema') {
+      const recActive = this.mode === 'cinema' ? this.cinemaRecording : (this.recorder && this.recorder.state === 'recording');
+      if (recActive) { this.mode === 'cinema' ? this.stopCinemaRecording() : this.stopRecording(); }
+      else { if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; } this.mode === 'cinema' ? this.startCinemaRecording() : this.startRecording(); }
+    } else if (this.mode === 'retrato') {
+      if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; }
+      this.capturePortrait();
+    } else if (this.mode === 'noturna') {
+      if (this.nightProcessing) return; // 10s de processamento já em curso — ignora novo toque
+      if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; }
+      this.captureNight();
+    } else if (this.mode === 'retro') {
+      if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; }
+      this.captureRetro();
     }
   },
   countdown(n) {
@@ -8456,6 +8655,155 @@ Apps.camera = {
       c.toBlob(b => resolve(b), 'image/jpeg', 0.75);
     });
   },
+  /* Captura o quadro cru da câmera (mesma lógica de capturePhoto, sem salvar), usada
+     como base pelos modos Retrato/Noturna/Retro antes do processamento específico. */
+  grabRawFrame() {
+    if (!this.videoEl || !this.stream) return null;
+    const v = this.videoEl, w = v.videoWidth, h = v.videoHeight;
+    if (!w || !h) return null;
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (this.facing === 'user') { ctx.translate(w, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(v, 0, 0, w, h);
+    return { canvas, w, h };
+  },
+  async saveProcessedPhoto(canvas, w, h, toastMsg) {
+    return new Promise((resolve) => {
+      canvas.toBlob(async (blob) => {
+        if (!blob) { Core.toast('Falha ao gerar a imagem processada.'); resolve(false); return; }
+        try {
+          const thumb = await this.makeThumb(canvas);
+          await MediaStore.addMedia({ kind: 'photo', mime: 'image/jpeg', blob, thumbBlob: thumb, width: w, height: h, source: 'capture' });
+          Core.toast(toastMsg); this.refreshThumb(); resolve(true);
+        } catch (e) { Core.toast('Erro ao salvar a foto: ' + e.message); resolve(false); }
+      }, 'image/jpeg', 0.92);
+    });
+  },
+  /* ---- Modo Retrato: foto com desfoque de fundo ---- */
+  async capturePortrait() {
+    const frame = this.grabRawFrame();
+    if (!frame) { Core.toast('A câmera ainda não produziu quadros de vídeo.'); return; }
+    this.els.flare.classList.remove('flash'); void this.els.flare.offsetWidth; this.els.flare.classList.add('flash');
+    this.showState('⏳', 'Processando retrato…', 'Aplicando desfoque de fundo localmente.');
+    await this.ensureSegModel();
+    const out = await this.applyBackgroundBlur(frame.canvas, frame.w, frame.h);
+    this.clearState();
+    await this.saveProcessedPhoto(out, frame.w, frame.h, 'Retrato salvo na Lime Gallery.');
+  },
+  /* ---- Modo Retro: preto e branco real aplicado à imagem final ---- */
+  async captureRetro() {
+    const frame = this.grabRawFrame();
+    if (!frame) { Core.toast('A câmera ainda não produziu quadros de vídeo.'); return; }
+    this.els.flare.classList.remove('flash'); void this.els.flare.offsetWidth; this.els.flare.classList.add('flash');
+    const { canvas, w, h } = frame;
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, w, h); const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      // luminância perceptual (Rec. 601) — preserva detalhes e composição, sem grão/sépia
+      const gray = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+      d[i] = d[i + 1] = d[i + 2] = gray;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    await this.saveProcessedPhoto(canvas, w, h, 'Foto em preto e branco salva na Lime Gallery.');
+  },
+  /* ---- Modo Noturna: botão vira lua, processa por 10s mesmo após soltar o dedo ---- */
+  async captureNight() {
+    const frame = this.grabRawFrame();
+    if (!frame) { Core.toast('A câmera ainda não produziu quadros de vídeo.'); return; }
+    this.nightProcessing = true; this.nightCancelled = false;
+    this.els.shutter.classList.add('moon-processing'); this.els.nightRing.style.display = '';
+    this.body.querySelectorAll('.cam-mode-btn, #cam-switch, #cam-timer-btn, #cam-flash-btn').forEach(b => b.disabled = true);
+    const totalMs = 10000, startedAt = Date.now();
+    const circumference = 226.19;
+    const tick = () => {
+      if (this.nightCancelled) return;
+      const elapsed = Date.now() - startedAt, pct = Math.min(1, elapsed / totalMs);
+      this.els.nightArc.style.strokeDashoffset = String(circumference * (1 - pct));
+      this.els.nightLabel.textContent = Math.ceil((totalMs - elapsed) / 1000) + 's';
+      if (pct < 1) requestAnimationFrame(tick); else finish();
+    };
+    const finish = async () => {
+      if (this.nightCancelled) return;
+      const { canvas, w, h } = frame;
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.getImageData(0, 0, w, h); const d = imgData.data;
+      // Melhoria local a partir dos pixels realmente capturados: não há exposição prolongada
+      // real nem dados extras — apenas aumento de luminosidade, contraste e leve redução de
+      // ruído sobre o quadro já obtido, documentado honestamente (ver cam-dof-badge/relatório).
+      const brightness = 48, contrast = 1.18;
+      for (let i = 0; i < d.length; i += 4) {
+        for (let c = 0; c < 3; c++) {
+          let v = d[i + c] + brightness;
+          v = (v - 128) * contrast + 128;
+          d[i + c] = Math.max(0, Math.min(255, v));
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      this.denoiseLight(canvas, w, h);
+      this.resetNightUI();
+      await this.saveProcessedPhoto(canvas, w, h, 'Foto noturna processada salva na Lime Gallery.');
+    };
+    requestAnimationFrame(tick);
+  },
+  /* Redução de ruído leve e local: box blur 3x3 muito sutil misturado com o original,
+     evitando perder detalhes — não inventa textura/informação que não estava no quadro. */
+  denoiseLight(canvas, w, h) {
+    try {
+      const ctx = canvas.getContext('2d');
+      const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d'); tctx.filter = 'blur(1px)'; tctx.drawImage(canvas, 0, 0);
+      ctx.globalAlpha = 0.35; ctx.drawImage(tmp, 0, 0); ctx.globalAlpha = 1;
+    } catch (e) {}
+  },
+  resetNightUI() {
+    this.nightProcessing = false;
+    this.els.shutter.classList.remove('moon-processing'); this.els.nightRing.style.display = 'none';
+    this.els.nightArc.style.strokeDashoffset = '226.19'; this.els.nightLabel.textContent = '';
+    this.body.querySelectorAll('.cam-mode-btn, #cam-switch, #cam-timer-btn, #cam-flash-btn').forEach(b => b.disabled = false);
+  },
+  /* ---- Modo Cinema: vídeo com desfoque de fundo, gravado via canvas composto + MediaRecorder ---- */
+  async startCinemaRecording() {
+    if (!Capability.has('mediaRecorder')) { Core.toast('Gravação de vídeo não é suportada neste navegador.'); return; }
+    if (!this.stream || !this.videoEl) { Core.toast('A câmera não está pronta.'); return; }
+    if (this.cinemaRecording) return;
+    await this.ensureSegModel();
+    const v = this.videoEl, w = v.videoWidth || 640, h = v.videoHeight || 480;
+    const outCanvas = document.createElement('canvas'); outCanvas.width = w; outCanvas.height = h;
+    const octx = outCanvas.getContext('2d');
+    let running = true;
+    const drawLoop = async () => {
+      if (!running) return;
+      const srcCanvas = document.createElement('canvas'); srcCanvas.width = w; srcCanvas.height = h;
+      const sctx = srcCanvas.getContext('2d');
+      if (this.facing === 'user') { sctx.translate(w, 0); sctx.scale(-1, 1); }
+      try { sctx.drawImage(v, 0, 0, w, h); } catch (e) {}
+      try {
+        const processed = await this.applyBackgroundBlur(srcCanvas, w, h);
+        octx.drawImage(processed, 0, 0, w, h);
+      } catch (e) { octx.drawImage(srcCanvas, 0, 0, w, h); }
+      this.cinemaRaf = requestAnimationFrame(drawLoop);
+    };
+    drawLoop();
+    const canvasStream = outCanvas.captureStream(30);
+    // Reaproveita a trilha de áudio real do stream original da câmera, quando houver
+    const audioTrack = this.stream.getAudioTracks()[0];
+    if (audioTrack) canvasStream.addTrack(audioTrack);
+    this.cinemaCanvasStream = canvasStream;
+    const mime = this.pickMime();
+    try { this.recorder = mime ? new MediaRecorder(canvasStream, { mimeType: mime }) : new MediaRecorder(canvasStream); }
+    catch (e) { running = false; if (this.cinemaRaf) cancelAnimationFrame(this.cinemaRaf); Core.toast('Falha ao iniciar a gravação Cinema: ' + e.message); return; }
+    this.recChunks = [];
+    this.recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) this.recChunks.push(e.data); };
+    this.recorder.onerror = (e) => { Core.toast('Erro durante a gravação: ' + (e.error ? e.error.message : 'desconhecido')); this._stopCinemaLoop(); this.resetRecUI(); this.cinemaRecording = false; };
+    this.recorder.onstop = () => { this._stopCinemaLoop(); this.finishRecording(); };
+    this.recorder.start(1000);
+    this.recStart = Date.now(); this.cinemaRecording = true;
+    this._cinemaStopLoop = () => { running = false; if (this.cinemaRaf) cancelAnimationFrame(this.cinemaRaf); this.cinemaRaf = null; };
+    this.els.recInd.classList.add('show'); this.els.shutter.classList.add('recording');
+    this.recTimer = setInterval(() => { const s = Math.floor((Date.now() - this.recStart) / 1000); this.els.recTime.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }, 500);
+  },
+  _stopCinemaLoop() { if (this._cinemaStopLoop) { this._cinemaStopLoop(); this._cinemaStopLoop = null; } if (this.cinemaCanvasStream) { try { this.cinemaCanvasStream.getTracks().forEach(t => t.stop()); } catch (e) {} this.cinemaCanvasStream = null; } },
+  stopCinemaRecording() { this.cinemaRecording = false; if (this.recorder && this.recorder.state === 'recording') this.recorder.stop(); },
   pickMime() {
     const opts = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
     for (const o of opts) { if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(o)) return o; }
@@ -8964,6 +9312,337 @@ Apps.editor = {
     if (this._wrap) { this._wrap.remove(); this._wrap = null; }
     this._img = null; this._canvas = null; this._state = null;
     if (this._onDone) { const cb = this._onDone; this._onDone = null; cb(); }
+  }
+};
+
+/* =====================================================================
+   LIMEOS 1.8 — Lime Maps
+   Mapa real: tiles rasterizados do OpenStreetMap (slippy map XYZ, sem
+   biblioteca externa — matemática padrão de projeção Web Mercator,
+   implementada aqui). Busca de endereço via Nominatim (geocoding real).
+   Rotas reais via OSRM público (distância/duração reais, geometria real
+   decodificada de polyline). Navegação passo a passo usa as instruções
+   (maneuvers) reais devolvidas pelo OSRM, atualizando o passo conforme
+   a posição real do usuário (watchPosition) muda.
+   Atenção: nominatim.openstreetmap.org e router.project-osrm.org são
+   serviços públicos de demonstração — sem SLA, com limite de uso e
+   eventual indisponibilidade. Qualquer falha de rede é tratada e
+   mostrada ao usuário, nunca escondida ou simulada como sucesso.
+   ===================================================================== */
+const MapMath = {
+  TILE: 256,
+  lonToX(lon, z) { return ((lon + 180) / 360) * Math.pow(2, z) * this.TILE; },
+  latToY(lat, z) {
+    const rad = (lat * Math.PI) / 180;
+    return ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, z) * this.TILE;
+  },
+  xToLon(x, z) { return (x / (Math.pow(2, z) * this.TILE)) * 360 - 180; },
+  yToLat(y, z) {
+    const n = Math.PI - (2 * Math.PI * y) / (Math.pow(2, z) * this.TILE);
+    return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  },
+  distanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000, toRad = (d) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  },
+  decodePolyline(str, precision) { // decodificador padrão de polyline do Google/OSRM (precision 5 ou 6)
+    let index = 0, lat = 0, lon = 0, coords = [];
+    const factor = Math.pow(10, precision || 5);
+    while (index < str.length) {
+      let result = 1, shift = 0, b;
+      do { b = str.charCodeAt(index++) - 63 - 1; result += b << shift; shift += 5; } while (b >= 0x1f);
+      lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+      result = 1; shift = 0;
+      do { b = str.charCodeAt(index++) - 63 - 1; result += b << shift; shift += 5; } while (b >= 0x1f);
+      lon += (result & 1) ? ~(result >> 1) : (result >> 1);
+      coords.push([lat / factor, lon / factor]);
+    }
+    return coords;
+  }
+};
+Apps.maps = {
+  zoom: 15, centerLat: -23.5505, centerLon: -46.6333, // fallback: São Paulo, até a localização real responder
+  myPos: null, watchId: null, markers: [], route: null, nav: null,
+  searchTimer: null, dragState: null, _tileCache: new Set(),
+  build(body) {
+    this.body = body;
+    body.innerHTML = `<div class="map-wrap">
+      <div class="map-viewport" id="mp-viewport">
+        <div class="map-tiles" id="mp-tiles"></div>
+        <svg class="map-overlay-svg" id="mp-svg"></svg>
+        <div id="mp-markers"></div>
+      </div>
+      <div class="map-attribution">© OpenStreetMap contributors</div>
+      <div class="map-top">
+        <div class="map-search-row">
+          <input class="text-input" id="mp-search" placeholder="Buscar endereço ou lugar...">
+          <button class="gal-icon-btn jelly" id="mp-search-clear" style="display:none">✕</button>
+        </div>
+        <div class="map-results" id="mp-results" style="display:none"></div>
+      </div>
+      <button class="map-locate-btn jelly" id="mp-locate" title="Minha localização">🎯</button>
+      <div class="map-zoom-ctl">
+        <button class="jelly" id="mp-zoom-in">+</button>
+        <button class="jelly" id="mp-zoom-out">−</button>
+      </div>
+      <div id="mp-sheet-host"></div>
+    </div>`;
+    this.els = { viewport: body.querySelector('#mp-viewport'), tiles: body.querySelector('#mp-tiles'), svg: body.querySelector('#mp-svg'), markersEl: body.querySelector('#mp-markers'), search: body.querySelector('#mp-search'), results: body.querySelector('#mp-results'), sheetHost: body.querySelector('#mp-sheet-host') };
+    this.bindMapGestures();
+    body.querySelector('#mp-zoom-in').addEventListener('click', () => this.setZoom(this.zoom + 1));
+    body.querySelector('#mp-zoom-out').addEventListener('click', () => this.setZoom(this.zoom - 1));
+    body.querySelector('#mp-locate').addEventListener('click', () => this.locateMe(true));
+    this.els.search.addEventListener('input', () => this.onSearchInput());
+    body.querySelector('#mp-search-clear').addEventListener('click', () => { this.els.search.value = ''; this.closeResults(); });
+    this.render();
+    this.locateMe(false);
+  },
+  onClose() { this.stopWatch(); if (this.nav) this.stopNav(true); },
+  back() {
+    if (this.nav) { this.stopNav(true); return true; }
+    if (this.route) { this.clearRoute(); return true; }
+    if (this.els.sheetHost.innerHTML) { this.closeSheet(); return true; }
+    return false;
+  },
+  stopWatch() { if (this.watchId != null) { try { navigator.geolocation.clearWatch(this.watchId); } catch (e) {} this.watchId = null; } },
+  /* ---- câmera do mapa: pan/zoom reais via pointer events ---- */
+  bindMapGestures() {
+    const vp = this.els.viewport; let startDist = null, startZoomAtPinch = null;
+    const pointers = new Map();
+    vp.addEventListener('pointerdown', (e) => {
+      try { vp.setPointerCapture(e.pointerId); } catch (_) {} pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 1) { this.dragState = { x: e.clientX, y: e.clientY, moved: false }; vp.classList.add('grabbing'); }
+    });
+    vp.addEventListener('pointermove', (e) => {
+      if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2) {
+        const pts = [...pointers.values()]; const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        if (startDist == null) { startDist = d; startZoomAtPinch = this.zoom; } else { const ratio = d / startDist; this.setZoom(startZoomAtPinch + Math.log2(ratio), false); }
+        return;
+      }
+      if (!this.dragState) return;
+      const dx = e.clientX - this.dragState.x, dy = e.clientY - this.dragState.y;
+      if (Math.hypot(dx, dy) > 3) this.dragState.moved = true;
+      const scale = Math.pow(2, this.zoom);
+      const curX = MapMath.lonToX(this.centerLon, this.zoom), curY = MapMath.latToY(this.centerLat, this.zoom);
+      this.centerLon = MapMath.xToLon(curX - dx, this.zoom); this.centerLat = MapMath.yToLat(curY - dy, this.zoom);
+      this.dragState.x = e.clientX; this.dragState.y = e.clientY;
+      this.render();
+    });
+    const up = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) { startDist = null; } if (pointers.size === 0) { this.dragState = null; vp.classList.remove('grabbing'); } };
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+    vp.addEventListener('wheel', (e) => { e.preventDefault(); this.setZoom(this.zoom + (e.deltaY < 0 ? 0.5 : -0.5)); }, { passive: false });
+  },
+  setZoom(z, doRender) { this.zoom = Math.max(2, Math.min(19, z)); if (doRender !== false) this.render(); },
+  /* ---- renderização de tiles reais (XYZ) ---- */
+  render() {
+    const vp = this.els.viewport; const w = vp.clientWidth || 390, h = vp.clientHeight || 600;
+    const z = Math.round(this.zoom), scaleAdj = Math.pow(2, this.zoom - z);
+    const centerPxX = MapMath.lonToX(this.centerLon, z), centerPxY = MapMath.latToY(this.centerLat, z);
+    const originX = centerPxX - (w / scaleAdj) / 2, originY = centerPxY - (h / scaleAdj) / 2;
+    const firstTileX = Math.floor(originX / MapMath.TILE), firstTileY = Math.floor(originY / MapMath.TILE);
+    const tilesX = Math.ceil(w / scaleAdj / MapMath.TILE) + 2, tilesY = Math.ceil(h / scaleAdj / MapMath.TILE) + 2;
+    const maxTile = Math.pow(2, z);
+    const tilesEl = this.els.tiles;
+    tilesEl.style.transform = `scale(${scaleAdj})`; tilesEl.style.transformOrigin = '0 0';
+    tilesEl.innerHTML = '';
+    for (let ty = firstTileY; ty < firstTileY + tilesY; ty++) {
+      for (let tx = firstTileX; tx < firstTileX + tilesX; tx++) {
+        const wrappedX = ((tx % maxTile) + maxTile) % maxTile;
+        if (ty < 0 || ty >= maxTile) continue;
+        const left = tx * MapMath.TILE - originX, top = ty * MapMath.TILE - originY;
+        const div = document.createElement('div'); div.className = 'map-tile'; div.style.left = left + 'px'; div.style.top = top + 'px';
+        const img = document.createElement('img'); img.loading = 'lazy'; img.alt = '';
+        img.src = `https://tile.openstreetmap.org/${z}/${wrappedX}/${ty}.png`;
+        img.onerror = () => { div.style.background = '#2a2a2a'; };
+        div.appendChild(img); tilesEl.appendChild(div);
+      }
+    }
+    this.renderMarkers(w, h, originX * scaleAdj, originY * scaleAdj, z, scaleAdj);
+    this.renderRoute(w, h, originX * scaleAdj, originY * scaleAdj, z, scaleAdj);
+  },
+  projectToScreen(lat, lon, z, originXScaled, originYScaled, scaleAdj) {
+    return { x: MapMath.lonToX(lon, z) * scaleAdj - originXScaled, y: MapMath.latToY(lat, z) * scaleAdj - originYScaled };
+  },
+  renderMarkers(w, h, oX, oY, z, scaleAdj) {
+    const host = this.els.markersEl; host.innerHTML = '';
+    if (this.myPos) { const p = this.projectToScreen(this.myPos.lat, this.myPos.lon, z, oX, oY, scaleAdj); const m = el('<div class="map-marker me"></div>'); m.style.left = p.x + 'px'; m.style.top = p.y + 'px'; host.appendChild(m); }
+    this.markers.forEach(mk => { const p = this.projectToScreen(mk.lat, mk.lon, z, oX, oY, scaleAdj); const m = el(`<div class="map-marker">📍</div>`); m.style.left = p.x + 'px'; m.style.top = p.y + 'px'; host.appendChild(m); });
+  },
+  renderRoute(w, h, oX, oY, z, scaleAdj) {
+    const svg = this.els.svg; svg.setAttribute('width', w); svg.setAttribute('height', h); svg.innerHTML = '';
+    if (!this.route || !this.route.coords.length) return;
+    const pts = this.route.coords.map(([lat, lon]) => this.projectToScreen(lat, lon, z, oX, oY, scaleAdj));
+    const d = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d); path.setAttribute('stroke', '#4C8C3C'); path.setAttribute('stroke-width', '6'); path.setAttribute('fill', 'none'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('opacity', '0.5');
+    const path2 = path.cloneNode(); path2.setAttribute('stroke', '#D9C94A'); path2.setAttribute('stroke-width', '4'); path2.setAttribute('opacity', '0.95');
+    svg.appendChild(path); svg.appendChild(path2);
+  },
+  centerOn(lat, lon, zoom) { this.centerLat = lat; this.centerLon = lon; if (zoom != null) this.zoom = zoom; this.render(); },
+  /* ---- geolocalização real ---- */
+  locateMe(recenter) {
+    if (!Capability.has('geolocation')) { Core.toast('Geolocalização não é suportada neste navegador.'); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { this.myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude }; if (recenter) this.centerOn(this.myPos.lat, this.myPos.lon, Math.max(this.zoom, 16)); else this.render(); },
+      (err) => { let msg = 'Não foi possível obter sua localização.'; if (err.code === err.PERMISSION_DENIED) msg = 'Permissão de localização negada.'; else if (err.code === err.TIMEOUT) msg = 'Tempo esgotado ao obter a localização.'; Core.toast(msg); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+    );
+  },
+  startWatch(cb) {
+    if (!Capability.has('geolocation')) return;
+    this.stopWatch();
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => { this.myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude, heading: pos.coords.heading, speed: pos.coords.speed }; if (cb) cb(this.myPos); },
+      (err) => { Core.toast('Perda de sinal de localização: ' + err.message); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+  },
+  /* ---- geocoding real via Nominatim ---- */
+  onSearchInput() {
+    clearTimeout(this.searchTimer); const q = this.els.search.value.trim();
+    this.body.querySelector('#mp-search-clear').style.display = q ? '' : 'none';
+    if (!q) { this.closeResults(); return; }
+    this.searchTimer = setTimeout(() => this.doSearch(q), 500); // debounce — respeita o limite de uso do serviço público
+  },
+  async doSearch(q) {
+    this.els.results.style.display = ''; this.els.results.innerHTML = '<div class="map-result-row">Buscando…</div>';
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&limit=8&addressdetails=1`;
+      const r = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+      if (!r.ok) throw new Error('Serviço de busca respondeu ' + r.status);
+      const data = await r.json();
+      this.paintResults(data);
+    } catch (e) { this.els.results.innerHTML = `<div class="map-result-row">Erro na busca: ${e.message}. O serviço público de geocoding pode estar temporariamente indisponível.</div>`; }
+  },
+  paintResults(list) {
+    this.els.results.innerHTML = '';
+    if (!list.length) { this.els.results.innerHTML = '<div class="map-result-row">Nenhum resultado encontrado.</div>'; return; }
+    list.forEach(item => {
+      const row = el(`<button class="map-result-row jelly">${(item.display_name || '').split(',')[0]}<span class="mr-sub">${(item.display_name || '').replace(/</g, '&lt;')}</span></button>`);
+      row.addEventListener('click', () => { this.selectPlace({ lat: +item.lat, lon: +item.lon, name: item.display_name }); });
+      this.els.results.appendChild(row);
+    });
+  },
+  closeResults() { this.els.results.style.display = 'none'; this.els.results.innerHTML = ''; },
+  selectPlace(place) {
+    this.closeResults(); this.markers = [{ lat: place.lat, lon: place.lon, name: place.name }];
+    this.centerOn(place.lat, place.lon, 16);
+    this.openPlaceSheet(place);
+  },
+  openPlaceSheet(place) {
+    this.els.sheetHost.innerHTML = '';
+    const parts = (place.name || '').split(','); const title = parts[0], sub = parts.slice(1).join(',').trim();
+    const sheet = el(`<div class="map-sheet"><div class="ms-title">${title.replace(/</g, '&lt;')}</div>${sub ? `<div class="ms-sub">${sub.replace(/</g, '&lt;')}</div>` : ''}<div class="map-sheet-actions"><button class="btn jelly" id="ms-close">Fechar</button><button class="btn primary jelly" id="ms-route">Rotas</button></div></div>`);
+    sheet.querySelector('#ms-close').addEventListener('click', () => this.closeSheet());
+    sheet.querySelector('#ms-route').addEventListener('click', () => this.planRoute(place));
+    this.els.sheetHost.appendChild(sheet);
+  },
+  closeSheet() { this.els.sheetHost.innerHTML = ''; this.markers = []; this.render(); },
+  /* ---- rotas reais via OSRM ---- */
+  async planRoute(dest) {
+    if (!this.myPos) { Core.toast('Obtendo sua localização para calcular a rota...'); this.locateMe(false); await new Promise(r => setTimeout(r, 1200)); if (!this.myPos) { Core.toast('Não foi possível obter sua localização para traçar a rota.'); return; } }
+    this.routeDest = dest; this.routeProfile = this.routeProfile || 'driving';
+    await this.fetchRoute();
+  },
+  async fetchRoute() {
+    this.els.sheetHost.innerHTML = '<div class="map-sheet"><div class="ms-title">Calculando rota…</div></div>';
+    try {
+      const o = this.myPos, d = this.routeDest;
+      const url = `https://router.project-osrm.org/route/v1/${this.routeProfile}/${o.lon},${o.lat};${d.lon},${d.lat}?overview=full&geometries=polyline&steps=true`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('Serviço de rotas respondeu ' + r.status);
+      const data = await r.json();
+      if (data.code !== 'Ok' || !data.routes || !data.routes.length) throw new Error(data.message || 'Nenhuma rota encontrada entre os pontos.');
+      const rt = data.routes[0];
+      const coords = MapMath.decodePolyline(rt.geometry, 5);
+      const steps = (rt.legs[0] && rt.legs[0].steps) || [];
+      this.route = { coords, distanceM: rt.distance, durationS: rt.duration, steps, profile: this.routeProfile };
+      this.markers = [{ lat: d.lat, lon: d.lon, name: d.name }];
+      this.fitRouteView();
+      this.render();
+      this.openRouteSheet();
+    } catch (e) {
+      this.els.sheetHost.innerHTML = `<div class="map-sheet"><div class="ms-title">Não foi possível calcular a rota</div><div class="ms-sub">${e.message}. O serviço público de rotas pode estar temporariamente indisponível ou sem cobertura para este trajeto.</div><div class="map-sheet-actions"><button class="btn jelly" id="ms-close">Fechar</button></div></div>`;
+      this.els.sheetHost.querySelector('#ms-close').addEventListener('click', () => this.closeSheet());
+    }
+  },
+  fitRouteView() { if (!this.route || !this.route.coords.length) return; const mid = this.route.coords[Math.floor(this.route.coords.length / 2)]; this.centerOn(mid[0], mid[1], 14); },
+  clearRoute() { this.route = null; this.routeDest = null; this.markers = []; this.closeSheet(); },
+  openRouteSheet() {
+    const rt = this.route; this.els.sheetHost.innerHTML = '';
+    const km = (rt.distanceM / 1000).toFixed(rt.distanceM < 10000 ? 1 : 0);
+    const mins = Math.round(rt.durationS / 60);
+    const sheet = el(`<div class="map-route-summary">
+      <div class="map-profile-row" id="mrs-profiles"></div>
+      <div class="mrs-stats"><div class="mrs-stat"><b>${km} km</b><span>Distância</span></div><div class="mrs-stat"><b>${mins} min</b><span>Tempo estimado</span></div></div>
+      <div class="map-sheet-actions"><button class="btn jelly" id="mrs-cancel">Cancelar</button><button class="btn primary jelly" id="mrs-start">Iniciar navegação</button></div>
+    </div>`);
+    const profiles = [['driving', '🚗 Carro'], ['cycling', '🚲 Bicicleta'], ['walking', '🚶 A pé']];
+    const prow = sheet.querySelector('#mrs-profiles');
+    profiles.forEach(([k, label]) => { const b = el(`<button class="map-profile-btn jelly ${this.routeProfile === k ? 'active' : ''}">${label}</button>`); b.addEventListener('click', async () => { this.routeProfile = k; await this.fetchRoute(); }); prow.appendChild(b); });
+    sheet.querySelector('#mrs-cancel').addEventListener('click', () => this.clearRoute());
+    sheet.querySelector('#mrs-start').addEventListener('click', () => this.startNav());
+    this.els.sheetHost.appendChild(sheet);
+  },
+  /* ---- navegação passo a passo real ---- */
+  startNav() {
+    if (!this.route || !this.route.steps.length) { Core.toast('Não há instruções de navegação para esta rota.'); return; }
+    this.nav = { stepIdx: 0 };
+    this.els.sheetHost.innerHTML = '';
+    const wrap = el('<div class="map-nav-wrap"></div>');
+    wrap.innerHTML = `<div class="map-nav-banner" id="mnv-banner"></div><div class="map-nav-map" id="mnv-map"></div><div class="map-nav-bottom"><div class="mnbo-eta"><b id="mnv-eta">—</b><span>chegada estimada</span></div><button class="btn primary jelly map-nav-stop" id="mnv-stop">Encerrar</button></div>`;
+    this.body.appendChild(wrap); this.navWrap = wrap;
+    wrap.querySelector('#mnv-stop').addEventListener('click', () => this.stopNav());
+    this.paintNavStep();
+    this.startWatch((pos) => this.onNavPosition(pos));
+  },
+  stepIcon(maneuver) {
+    const t = (maneuver && maneuver.type) || '', m = (maneuver && maneuver.modifier) || '';
+    if (t === 'arrive') return '🏁'; if (t === 'depart') return '⬆️';
+    if (m.includes('left')) return '⬅️'; if (m.includes('right')) return '➡️';
+    if (t === 'roundabout') return '🔄'; return '⬆️';
+  },
+  stepText(step) {
+    const m = step.maneuver || {}; const name = step.name ? ` em ${step.name}` : '';
+    if (m.type === 'depart') return 'Siga em frente' + name;
+    if (m.type === 'arrive') return 'Você chegou ao destino';
+    if (m.type === 'roundabout') return 'Entre na rotatória' + name;
+    const mod = m.modifier || '';
+    if (mod.includes('left')) return 'Vire à esquerda' + name;
+    if (mod.includes('right')) return 'Vire à direita' + name;
+    return 'Continue' + name;
+  },
+  paintNavStep() {
+    if (!this.navWrap) return;
+    const rt = this.route, step = rt.steps[this.nav.stepIdx]; if (!step) { this.stopNav(); return; }
+    const banner = this.navWrap.querySelector('#mnv-banner');
+    banner.innerHTML = `<span class="mnb-icon">${this.stepIcon(step.maneuver)}</span><div><div class="mnb-instr">${this.stepText(step)}</div><div class="mnb-dist">${Math.round(step.distance)} m</div></div>`;
+    const remainingS = rt.steps.slice(this.nav.stepIdx).reduce((s, x) => s + x.duration, 0);
+    const eta = new Date(Date.now() + remainingS * 1000);
+    this.navWrap.querySelector('#mnv-eta').textContent = eta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const mapHost = this.navWrap.querySelector('#mnv-map'); if (mapHost && !mapHost.contains(this.els.viewport)) mapHost.appendChild(this.body.querySelector('.map-viewport'));
+    if (this.myPos) this.centerOn(this.myPos.lat, this.myPos.lon, 17);
+  },
+  onNavPosition(pos) {
+    if (!this.nav) return;
+    const step = this.route.steps[this.nav.stepIdx]; if (!step) return;
+    const end = step.maneuver.location; // [lon, lat]
+    const distToStepEnd = MapMath.distanceMeters(pos.lat, pos.lon, end[1], end[0]);
+    if (distToStepEnd < 30 && this.nav.stepIdx < this.route.steps.length - 1) { this.nav.stepIdx++; this.paintNavStep(); }
+    else { this.centerOn(pos.lat, pos.lon); this.render(); }
+    // fora da rota (bem distante de todos os pontos conhecidos): avisa, sem recalcular automaticamente para não gastar o serviço público em excesso
+    const minDist = Math.min(...this.route.coords.map(([lat, lon]) => MapMath.distanceMeters(pos.lat, pos.lon, lat, lon)));
+    if (minDist > 150 && !this.nav.offRouteWarned) { this.nav.offRouteWarned = true; Core.toast('Você parece ter saído da rota. Toque em "Rotas" novamente para recalcular.'); }
+  },
+  stopNav(skipRender) {
+    this.stopWatch();
+    if (this.navWrap) { const mapHost = this.navWrap.querySelector('#mnv-map'); if (mapHost && mapHost.contains(this.els.viewport)) this.els.viewport.remove(); this.navWrap.remove(); this.navWrap = null; }
+    this.nav = null;
+    if (!this.els.viewport.parentNode) this.body.querySelector('.map-wrap').insertBefore(this.els.viewport, this.body.querySelector('.map-attribution'));
+    if (!skipRender) { this.closeSheet(); } else { this.render(); }
   }
 };
 
