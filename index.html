@@ -132,7 +132,9 @@ input { font-family:inherit; user-select:text; -webkit-user-select:text; }
 .pin-flyer { position:fixed; z-index:950; width:14px; height:14px; background:var(--lime-yellow); border-radius:40% 60% 55% 45% / 55% 45% 60% 40%; pointer-events:none; }
 .pin-content.shake { animation:shake .4s ease; }
 @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-10px)} 40%{transform:translateX(10px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
-#screen-pin .pin-bio { font-size:var(--fs-sm); color:var(--text-dim); text-align:center; min-height:16px; }
+#screen-pin .pin-bio { font-size:var(--fs-sm); color:var(--text-dim); text-align:center; min-height:16px; background:none; border:none; padding:6px; }
+#screen-pin .pin-bio.pin-bio-action { color:var(--lime-yellow); font-weight:600; }
+#screen-pin .pin-bio.pin-bio-action:active { opacity:.7; }
 
 /* ---------- HOME ---------- */
 #screen-home { align-items:flex-start; justify-content:center; background-color:var(--bg-black); }
@@ -909,7 +911,7 @@ body.reading-mode #reading-overlay { display:block; }
       <button class="pin-key" data-key="7">7</button><button class="pin-key" data-key="8">8</button><button class="pin-key" data-key="9">9</button>
       <span class="pin-key pin-key-empty"></span><button class="pin-key" data-key="0">0</button><button class="pin-key pin-key-del" data-key="del">⌫</button>
     </div>
-    <div id="pin-bio" class="pin-bio"></div>
+    <button id="pin-bio" class="pin-bio"></button>
   </div>
 </section>
 
@@ -4873,7 +4875,7 @@ if(pinMode==='enter') renderAll();
    Cada módulo é um objeto isolado; comunicam-se por Core.bus.
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
-const VERSION = '1.8.8';
+const VERSION = '1.8.9';
 
 /* ---------- Core: barramento de eventos ---------- */
 const Core = {
@@ -5238,8 +5240,53 @@ const Auth = {
   async verifyPin(pin) { return (await this.hash(pin)) === Storage.get('sec.pin', null); },
   async setPin(pin) { Storage.set('sec.pin', await this.hash(pin)); },
   biometricAvailable() { return Capability.has('webauthn'); },
-  /* Biometria via WebAuthn: o PWA não lê impressão digital. Ainda sem credencial registrada — PIN é o fallback. */
-  biometricStatus() { return this.biometricAvailable() ? 'WebAuthn disponível (ainda não configurado). Use o PIN.' : 'Biometria indisponível neste ambiente. Use o PIN.'; }
+  /* ===== 1.8.9 — Biometria real via WebAuthn =====
+     O LimeOS, como PWA, não lê a impressão digital/rosto diretamente — ninguém faz isso no
+     navegador. O que é real aqui é a API WebAuthn do próprio navegador/SO: ela pede ao usuário
+     para usar o autenticador da plataforma (Face ID/Touch ID/impressão digital/PIN do SO) e
+     devolve uma prova criptográfica, sem o LimeOS jamais ver o dado biométrico em si. Isso
+     obrigatoriamente abre o prompt nativo do navegador/SO — nenhum código pode suprimir essa
+     etapa, é a própria garantia de segurança do WebAuthn. O credential ID fica salvo localmente
+     (Storage) para permitir pedir a verificação depois; não existe backend, nada sai do aparelho. */
+  biometricRegistered() { return !!Storage.get('sec.webauthnCredId', null); },
+  biometricStatus() {
+    if (!this.biometricAvailable()) return 'Biometria indisponível neste navegador/dispositivo. Use o PIN.';
+    return this.biometricRegistered() ? 'Biometria configurada — disponível na tela de PIN.' : 'WebAuthn disponível, ainda não configurado. Use o PIN ou configure a biometria.';
+  },
+  _b64urlToBuf(s) { const pad = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4); const bin = atob(pad); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i); return buf.buffer; },
+  _bufToB64url(buf) { const bytes = new Uint8Array(buf); let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  async registerBiometric() {
+    if (!this.biometricAvailable()) throw new Error('WebAuthn não está disponível neste navegador.');
+    if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+      try { const ok = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); if (!ok) throw new Error('Nenhum autenticador biométrico de plataforma (digital/rosto) foi encontrado neste dispositivo.'); } catch (e) { if (e instanceof Error && e.message.includes('autenticador')) throw e; }
+    }
+    const userId = new Uint8Array(16); crypto.getRandomValues(userId);
+    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
+    // O prompt nativo do navegador/SO abre exatamente aqui — é exigido pelo WebAuthn, não opcional.
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge, rp: { name: 'LimeOS' },
+        user: { id: userId, name: 'usuario-limeos', displayName: 'Usuário LimeOS' },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000, attestation: 'none'
+      }
+    });
+    if (!cred) throw new Error('Nenhuma credencial foi criada.');
+    Storage.set('sec.webauthnCredId', this._bufToB64url(cred.rawId));
+    return true;
+  },
+  async verifyBiometric() {
+    const credId = Storage.get('sec.webauthnCredId', null);
+    if (!credId) throw new Error('Biometria ainda não configurada.');
+    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
+    // O prompt nativo do navegador/SO abre exatamente aqui também, por exigência do WebAuthn.
+    const assertion = await navigator.credentials.get({
+      publicKey: { challenge, allowCredentials: [{ id: this._b64urlToBuf(credId), type: 'public-key' }], userVerification: 'required', timeout: 60000 }
+    });
+    return !!assertion;
+  },
+  forgetBiometric() { Storage.del('sec.webauthnCredId'); }
 };
 
 /* ---------- Lock Screen ---------- */
@@ -5266,13 +5313,13 @@ const Lock = {
     };
     z.addEventListener('pointerup', end); z.addEventListener('pointercancel', end);
   },
-  toPin() { Pin.reset(); Shell.show('screen-pin'); $('lock-content').style.opacity = ''; $('pin-bio').textContent = Auth.biometricStatus(); },
+  toPin() { Pin.reset(); Shell.show('screen-pin'); $('lock-content').style.opacity = ''; Pin.refreshBioButton(); if (Auth.biometricRegistered()) Pin.tryBiometric(true); },
   unlocked() { this.locked = false; Shell.show('screen-home'); Home.render(); }
 };
 
 /* ---------- PIN (Material Design 3, animação por tecla) ---------- */
 const Pin = {
-  buf: '', busy: false,
+  buf: '', busy: false, bioTrying: false,
   reset() { this.buf = ''; this.busy = false; this.dots(); },
   dots() { document.querySelectorAll('#pin-dots .pin-dot').forEach((d, i) => { d.classList.toggle('filled', i < this.buf.length); d.classList.remove('error'); }); },
   bind() {
@@ -5287,6 +5334,35 @@ const Pin = {
       setTimeout(() => this.dots(), 200);
       if (this.buf.length === 4) this.check();
     });
+    $('pin-bio').addEventListener('click', () => { if (Auth.biometricRegistered()) this.tryBiometric(false); });
+  },
+  /* 1.8.9 — Botão/estado de biometria na tela de PIN */
+  refreshBioButton() {
+    const btn = $('pin-bio');
+    if (Auth.biometricRegistered()) { btn.textContent = '🔓 Usar biometria'; btn.classList.add('pin-bio-action'); }
+    else { btn.textContent = Auth.biometricStatus(); btn.classList.remove('pin-bio-action'); }
+  },
+  /* auto=true: tentativa silenciosa ao entrar na tela (ainda assim abre o prompt nativo do SO,
+     mas sem exigir toque extra do usuário); auto=false: toque explícito no botão. Falha/cancelamento
+     do WebAuthn nunca trava a tela — o PIN continua disponível normalmente como fallback real. */
+  async tryBiometric(auto) {
+    if (this.bioTrying || this.busy) return;
+    this.bioTrying = true;
+    const btn = $('pin-bio'); const prevText = btn.textContent;
+    if (!auto) btn.textContent = 'Aguardando biometria…';
+    try {
+      const ok = await Auth.verifyBiometric();
+      if (ok) {
+        this.busy = true;
+        const c = $('pin-content'); const a = c.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.92)', opacity: 0 }], { duration: 260, easing: 'ease-in', fill: 'forwards' });
+        a.onfinish = () => { c.getAnimations().forEach(x => x.cancel()); Lock.unlocked(); };
+        return;
+      }
+    } catch (e) {
+      // Cancelamento/erro do WebAuthn (usuário recusou, timeout, etc.) — volta para o PIN sem drama.
+      if (!auto) Core.toast('Biometria não confirmada. Use o PIN.');
+    }
+    this.bioTrying = false; if (btn.isConnected) btn.textContent = prevText;
   },
   fly(key, idx, label) { // o número vira o indicador, de forma fluida
     const dot = document.querySelectorAll('#pin-dots .pin-dot')[idx]; if (!dot) return;
@@ -6644,15 +6720,31 @@ Apps.settings = {
     },
     lock(b) {
       b.appendChild(UI.card('Wallpaper da tela de bloqueio', 'Configure em Personalização › Wallpaper.')); b.appendChild(UI.card('Relógio', 'Posição, tamanho e composição em Personalização › Relógio.'));
-      b.appendChild(UI.card('Método de desbloqueio', 'PIN (padrão).', [REAL])); b.appendChild(UI.card('Biometria / WebAuthn', Auth.biometricStatus(), [Capability.has('webauthn') ? REAL : ['', 'Indisponível']]));
+      b.appendChild(UI.card('Método de desbloqueio', 'PIN (padrão).', [REAL])); b.appendChild(UI.card('Biometria / WebAuthn', Auth.biometricStatus() + ' Configure em Configurações › Segurança › Biometria.', [Capability.has('webauthn') ? REAL : ['', 'Indisponível']]));
     },
     security(b) {
       const c = el('<div class="card"><div class="card-title">Alterar PIN</div><div class="card-sub">PIN de 4 dígitos, guardado como hash (separado das preferências).</div></div>');
       const a = el('<input class="text-input" inputmode="numeric" maxlength="4" placeholder="PIN atual">'), n = el('<input class="text-input" inputmode="numeric" maxlength="4" placeholder="Novo PIN (4 dígitos)">'), bt = el('<button class="btn primary">Salvar PIN</button>');
       bt.addEventListener('click', async () => { if (!(await Auth.verifyPin(a.value))) { Core.toast('PIN atual incorreto.'); return; } if (!/^\d{4}$/.test(n.value)) { Core.toast('O novo PIN precisa ter 4 dígitos.'); return; } await Auth.setPin(n.value); a.value = n.value = ''; Core.toast('PIN atualizado.'); });
       c.appendChild(a); c.appendChild(n); c.appendChild(bt); b.appendChild(c);
-      b.appendChild(UI.card('Biometria (WebAuthn)', Auth.biometricStatus(), [Capability.has('webauthn') ? REAL : ['', 'Indisponível']]));
+      const bioCard = el(`<div class="card"><div class="card-title">Biometria (WebAuthn)</div><div class="card-sub" id="sec-bio-status">${Auth.biometricStatus()}</div></div>`);
+      if (Capability.has('webauthn')) {
+        const row = el('<div style="margin-top:8px"></div>');
+        const regBtn = el('<button class="btn primary jelly">Configurar biometria</button>');
+        const rmBtn = el('<button class="btn jelly">Remover biometria</button>');
+        const refreshBtns = () => { const reg = Auth.biometricRegistered(); regBtn.style.display = reg ? 'none' : ''; rmBtn.style.display = reg ? '' : 'none'; bioCard.querySelector('#sec-bio-status').textContent = Auth.biometricStatus(); };
+        regBtn.addEventListener('click', async () => {
+          regBtn.disabled = true;
+          try { await Auth.registerBiometric(); Core.toast('Biometria configurada com sucesso.'); }
+          catch (e) { Core.toast('Não foi possível configurar a biometria: ' + (e && e.message ? e.message : 'erro desconhecido')); }
+          regBtn.disabled = false; refreshBtns();
+        });
+        rmBtn.addEventListener('click', () => { Auth.forgetBiometric(); Core.toast('Biometria removida. O PIN continua funcionando normalmente.'); refreshBtns(); });
+        row.appendChild(regBtn); row.appendChild(rmBtn); bioCard.appendChild(row); refreshBtns();
+      }
+      b.appendChild(bioCard);
       b.appendChild(UI.card('Bloqueio interno', 'Bloqueia o LimeOS, não o aparelho. Como PWA, a segurança não equivale à de um sistema nativo.', [SIM]));
+      b.appendChild(UI.card('Como funciona', 'A biometria é verificada pelo próprio navegador/sistema operacional via WebAuthn — o LimeOS nunca recebe nem armazena o dado biométrico em si, apenas uma credencial criptográfica. O prompt nativo do navegador é exigido pela própria especificação WebAuthn e não pode ser removido.'));
     },
     privacy(b) {
       const rows = [['Notificações', Capability.has('notifications') ? Notification.permission : null], ['Câmera', null, 'camera'], ['Microfone', null, 'microphone'], ['Localização', null, 'geolocation']];
@@ -7494,7 +7586,8 @@ const CHANGELOG = [
   { v: '1.7', desc: 'Lime Camera: câmera real via getUserMedia, captura de fotos, gravação de vídeos (MediaRecorder), troca de câmera frontal/traseira, flash/torch e zoom reais quando suportados pelo hardware, temporizador e grade de composição. Lime Gallery: biblioteca própria em IndexedDB dedicado, visualizador de fotos, reprodutor de vídeo, álbuns virtuais, favoritos, busca/filtros, seleção múltipla, lixeira recuperável e um editor de imagens completo (recorte, rotação, espelhamento, ajustes e filtros) que sempre salva como cópia, preservando o original.' },
   { v: '1.7.1', desc: 'Lime Camera e Lime Gallery passaram a ser apps nativos do sistema, já instalados por padrão na Home — não fazem mais parte da App Store opcional.' },
   { v: '1.8', desc: 'Lime Maps: app nativo de mapas com tiles reais do OpenStreetMap (pan/zoom próprios, sem biblioteca externa), localização real do dispositivo, busca de endereços/lugares via Nominatim, cálculo de rotas reais (distância/duração) via OSRM para carro/bicicleta/a pé, com desenho real do trajeto no mapa e navegação passo a passo usando as instruções reais da rota. Usa serviços públicos do OpenStreetMap — sem chave de API, mas sem SLA de uso comercial; indisponibilidade é comunicada, nunca simulada.' },
-  { v: '1.8.8', desc: 'Lime Camera — Camera Control: quatro novos modos de captura integrados à câmera existente. Cinema (vídeo) e Retrato (foto) aplicam desfoque de fundo via modelo local de segmentação (TensorFlow.js + Selfie Segmentation, carregado sob demanda), com fallback honesto para uma heurística geométrica de campo de profundidade quando o modelo não está disponível. Noturna processa a foto por 10s reais mesmo após soltar o botão (indicador de lua animado), aumentando brilho/contraste e reduzindo ruído a partir dos pixels realmente capturados — sem exposição prolongada simulada. Retro converte a foto final para preto e branco real (luminância, sem grão/sépia). Todos os modos salvam na Lime Gallery existente.' }
+  { v: '1.8.8', desc: 'Lime Camera — Camera Control: quatro novos modos de captura integrados à câmera existente. Cinema (vídeo) e Retrato (foto) aplicam desfoque de fundo via modelo local de segmentação (TensorFlow.js + Selfie Segmentation, carregado sob demanda), com fallback honesto para uma heurística geométrica de campo de profundidade quando o modelo não está disponível. Noturna processa a foto por 10s reais mesmo após soltar o botão (indicador de lua animado), aumentando brilho/contraste e reduzindo ruído a partir dos pixels realmente capturados — sem exposição prolongada simulada. Retro converte a foto final para preto e branco real (luminância, sem grão/sépia). Todos os modos salvam na Lime Gallery existente.' },
+  { v: '1.8.9', desc: 'Biometria real via WebAuthn: a tela de PIN ganha um botão "Usar biometria" que aciona o autenticador de plataforma real do navegador/SO (digital, rosto ou PIN do dispositivo) como alternativa ao PIN de 4 dígitos do LimeOS — o prompt nativo é obrigatório por segurança e nunca é suprimido. Configuração/remoção em Configurações › Segurança, com o credential ID salvo apenas localmente; o LimeOS nunca recebe o dado biométrico em si, só uma prova criptográfica.' }
 ];
 Apps.about = {
   tab: 'info',

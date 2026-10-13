@@ -1,7 +1,7 @@
 {
   "name": "LimeOS",
   "short_name": "LimeOS",
-  "description": "LimeOS 1.8.8 — Beta experimental",
+  "description": "LimeOS 1.8.9 — Beta experimental",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
