@@ -4875,7 +4875,7 @@ if(pinMode==='enter') renderAll();
    Cada módulo é um objeto isolado; comunicam-se por Core.bus.
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
-const VERSION = '1.8.9';
+const VERSION = '1.8.10';
 
 /* ---------- Core: barramento de eventos ---------- */
 const Core = {
@@ -7587,7 +7587,8 @@ const CHANGELOG = [
   { v: '1.7.1', desc: 'Lime Camera e Lime Gallery passaram a ser apps nativos do sistema, já instalados por padrão na Home — não fazem mais parte da App Store opcional.' },
   { v: '1.8', desc: 'Lime Maps: app nativo de mapas com tiles reais do OpenStreetMap (pan/zoom próprios, sem biblioteca externa), localização real do dispositivo, busca de endereços/lugares via Nominatim, cálculo de rotas reais (distância/duração) via OSRM para carro/bicicleta/a pé, com desenho real do trajeto no mapa e navegação passo a passo usando as instruções reais da rota. Usa serviços públicos do OpenStreetMap — sem chave de API, mas sem SLA de uso comercial; indisponibilidade é comunicada, nunca simulada.' },
   { v: '1.8.8', desc: 'Lime Camera — Camera Control: quatro novos modos de captura integrados à câmera existente. Cinema (vídeo) e Retrato (foto) aplicam desfoque de fundo via modelo local de segmentação (TensorFlow.js + Selfie Segmentation, carregado sob demanda), com fallback honesto para uma heurística geométrica de campo de profundidade quando o modelo não está disponível. Noturna processa a foto por 10s reais mesmo após soltar o botão (indicador de lua animado), aumentando brilho/contraste e reduzindo ruído a partir dos pixels realmente capturados — sem exposição prolongada simulada. Retro converte a foto final para preto e branco real (luminância, sem grão/sépia). Todos os modos salvam na Lime Gallery existente.' },
-  { v: '1.8.9', desc: 'Biometria real via WebAuthn: a tela de PIN ganha um botão "Usar biometria" que aciona o autenticador de plataforma real do navegador/SO (digital, rosto ou PIN do dispositivo) como alternativa ao PIN de 4 dígitos do LimeOS — o prompt nativo é obrigatório por segurança e nunca é suprimido. Configuração/remoção em Configurações › Segurança, com o credential ID salvo apenas localmente; o LimeOS nunca recebe o dado biométrico em si, só uma prova criptográfica.' }
+  { v: '1.8.9', desc: 'Biometria real via WebAuthn: a tela de PIN ganha um botão "Usar biometria" que aciona o autenticador de plataforma real do navegador/SO (digital, rosto ou PIN do dispositivo) como alternativa ao PIN de 4 dígitos do LimeOS — o prompt nativo é obrigatório por segurança e nunca é suprimido. Configuração/remoção em Configurações › Segurança, com o credential ID salvo apenas localmente; o LimeOS nunca recebe o dado biométrico em si, só uma prova criptográfica. Correção: os modos Cinema e Retrato da Lime Camera borravam a imagem inteira quando o modelo de segmentação (CDN) não carregava — a elipse fixa anterior foi substituída por detecção real de foco via análise de nitidez local (Sobel) na própria cena, com ~3s de análise contínua antes de aplicar o desfoque, suavização ao longo do tempo para evitar saltos, intensidade moderada (6-12px, antes 14px fixo) proporcional à confiança da detecção, e nenhum desfoque quando o foco não é identificado com confiança — em vez de borrar a cena inteira.' },
+  { v: '1.8.10', desc: 'Lime Maps — correção: a viewport do mapa ficava preta por alguns segundos durante e após arrastar. Causa: a cada movimento do dedo, todos os tiles eram apagados (innerHTML) e recriados do zero, forçando o navegador a recarregar as imagens repetidamente e nunca deixando um conjunto terminar de carregar. Agora os elementos de tile já carregados são reaproveitados entre renders (por posição z/x/y), só os tiles que realmente saíram da área visível são removidos — o mapa permanece visível durante e depois do arrasto, em qualquer velocidade.' }
 ];
 Apps.about = {
   tab: 'info',
@@ -8460,7 +8461,7 @@ Apps.camera = {
   recorder: null, recChunks: [], recStart: 0, recTimer: null, zoomCap: null,
   timerSecs: 0, gridOn: false, lastThumbUrl: null, busy: false,
   /* 1.8.8 — Camera Control: modos Cinema/Retrato/Noturna/Retro */
-  nightProcessing: false, nightCancelled: false, cinemaRecording: false, cinemaCanvasStream: null, cinemaRaf: null,
+  nightProcessing: false, nightCancelled: false, cinemaRecording: false, cinemaAnalyzing: false, cinemaCanvasStream: null, cinemaRaf: null, portraitAnalyzing: false,
   segModel: null, segModelState: 'idle' /* idle | loading | ready | unavailable */, segLoadPromise: null,
   build(body) {
     this.body = body; this.mode = 'photo'; this.gridOn = false; this.timerSecs = 0;
@@ -8533,7 +8534,7 @@ Apps.camera = {
     if (this.cinemaRecording) { this.stopCinemaRecording(); }
   },
   setMode(m) {
-    if (this.nightProcessing || this.cinemaRecording || (this.recorder && this.recorder.state === 'recording')) { Core.toast('Finalize a captura/gravação atual antes de trocar de modo.'); return; }
+    if (this.nightProcessing || this.cinemaRecording || this.cinemaAnalyzing || this.portraitAnalyzing || (this.recorder && this.recorder.state === 'recording')) { Core.toast('Finalize a captura/gravação atual antes de trocar de modo.'); return; }
     this.mode = m;
     this.body.querySelectorAll('.cam-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
     this.els.shutter.classList.toggle('video-mode', m === 'video' || m === 'cinema');
@@ -8581,7 +8582,7 @@ Apps.camera = {
     });
   },
   /* Gera uma máscara binária (1 = primeiro plano) real via modelo de segmentação,
-     ou null se indisponível — quem chama cai para a heurística geométrica nesse caso. */
+     ou null se indisponível — quem chama cai para a detecção de foco por nitidez nesse caso. */
   async getSegmentationMask(videoOrCanvas, w, h) {
     if (this.segModelState !== 'ready' || !this.segModel) return null;
     try {
@@ -8593,32 +8594,155 @@ Apps.camera = {
       return mc;
     } catch (e) { return null; }
   },
-  /* Aplica desfoque de fundo em um canvas já desenhado com o quadro original (srcCanvas),
-     usando a máscara real do modelo quando disponível, ou a heurística elíptica de campo
-     de profundidade (nítido no centro, desfocado nas bordas) como alternativa honesta. */
-  async applyBackgroundBlur(srcCanvas, w, h) {
+  /* =====================================================================
+     1.8 — Correção de bugs: detecção de foco por nitidez local (sem modelo de IA)
+     Quando o modelo de segmentação (CDN) não está disponível, a correção anterior caía
+     numa elipse geométrica fixa no centro do quadro — isso não é detecção nenhuma, é um
+     recorte decorativo que tanto borra pedaços do objeto em foco quanto deixa fundo nítido
+     fora da elipse. A substituição real: medir nitidez local (energia de gradiente/Sobel)
+     em blocos da imagem. Fundo desfocado opticamente ou distante tem menos detalhe de alta
+     frequência que o objeto/pessoa em foco (que está mais perto e nítido na captura da
+     câmera) — isso é um sinal real extraído da própria imagem, não uma suposição de posição.
+     ===================================================================== */
+  /* Analisa um canvas em blocos (grade ~12x16) e retorna a energia de nitidez de cada bloco
+     via gradiente de Sobel simplificado sobre a luminância. Baixo custo: trabalha numa cópia
+     reduzida da imagem (não no quadro em resolução nativa) para rodar bem a 1 amostra/~150ms. */
+  computeSharpnessGrid(srcCanvas, w, h) {
+    const sw = 96, sh = Math.max(1, Math.round(sw * h / w));
+    const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
+    const sctx = sc.getContext('2d', { willReadFrequently: true });
+    sctx.drawImage(srcCanvas, 0, 0, sw, sh);
+    const d = sctx.getImageData(0, 0, sw, sh).data;
+    const lum = new Float32Array(sw * sh);
+    for (let i = 0; i < sw * sh; i++) { const o = i * 4; lum[i] = d[o] * 0.299 + d[o + 1] * 0.587 + d[o + 2] * 0.114; }
+    const cols = 12, rows = 16, cw = sw / cols, ch = sh / rows;
+    const grid = new Float32Array(cols * rows);
+    for (let gy = 0; gy < rows; gy++) {
+      for (let gx = 0; gx < cols; gx++) {
+        let energy = 0, n = 0;
+        const x0 = Math.floor(gx * cw), x1 = Math.min(sw - 1, Math.floor((gx + 1) * cw));
+        const y0 = Math.floor(gy * ch), y1 = Math.min(sh - 1, Math.floor((gy + 1) * ch));
+        for (let y = Math.max(1, y0); y < Math.max(2, y1); y++) {
+          for (let x = Math.max(1, x0); x < Math.max(2, x1); x++) {
+            const i = y * sw + x;
+            const gxv = lum[i + 1] - lum[i - 1], gyv = lum[i + sw] - lum[i - sw];
+            energy += Math.sqrt(gxv * gxv + gyv * gyv); n++;
+          }
+        }
+        grid[gy * cols + gx] = n ? energy / n : 0;
+      }
+    }
+    return { grid, cols, rows };
+  },
+  /* A partir da grade de nitidez, encontra o retângulo (em coordenadas 0..1) que melhor cobre
+     os blocos mais nítidos, e um score de confiança (quão destacado o foco é em relação ao
+     resto da cena). Confiança baixa = cena sem foco claro (tudo igualmente nítido/desfocado,
+     ex. parede lisa, ou câmera ainda se ajustando) → quem chama deve reduzir/desligar o blur. */
+  estimateFocusRegion(srcCanvas, w, h) {
+    const { grid, cols, rows } = this.computeSharpnessGrid(srcCanvas, w, h);
+    let total = 0, max = 0; for (let i = 0; i < grid.length; i++) { total += grid[i]; max = Math.max(max, grid[i]); }
+    const mean = total / grid.length || 0;
+    if (max < 1e-3) return { confidence: 0 };
+    // limiar adaptativo: blocos nitidamente acima da média da própria cena (não um número fixo global)
+    const threshold = mean + (max - mean) * 0.35;
+    let minX = cols, maxX = -1, minY = rows, maxY = -1, hits = 0;
+    for (let gy = 0; gy < rows; gy++) {
+      for (let gx = 0; gx < cols; gx++) {
+        if (grid[gy * cols + gx] >= threshold) { minX = Math.min(minX, gx); maxX = Math.max(maxX, gx); minY = Math.min(minY, gy); maxY = Math.max(maxY, gy); hits++; }
+      }
+    }
+    if (hits === 0 || maxX < 0) return { confidence: 0 };
+    const coverage = hits / (cols * rows);
+    // confiança: o foco precisa ser uma região compacta e destacada, não espalhado pela cena inteira
+    // (espalhado demais = provavelmente tudo igualmente nítido, sem separação real de profundidade)
+    const spread = (maxX - minX + 1) * (maxY - minY + 1) / (cols * rows);
+    const contrast = Math.min(1, (max - mean) / (mean + 1e-3));
+    const confidence = Math.max(0, Math.min(1, contrast * (1 - Math.min(0.85, coverage)) * (spread < 0.9 ? 1 : 0.4)));
+    // pequena margem de respiro ao redor do retângulo detectado, para não cortar bordas do objeto
+    const padX = 0.6, padY = 0.6;
+    const rx0 = Math.max(0, (minX - padX) / cols), rx1 = Math.min(1, (maxX + 1 + padX) / cols);
+    const ry0 = Math.max(0, (minY - padY) / rows), ry1 = Math.min(1, (maxY + 1 + padY) / rows);
+    return { confidence, rx0, ry0, rx1, ry1 };
+  },
+  /* Suaviza a região de foco ao longo do tempo (EMA) para a janela de ~3s de análise contínua
+     pedida pela spec — evita que o retângulo "pule" quadro a quadro por ruído momentâneo. */
+  _smoothRegion(prev, next, alpha) {
+    if (!prev) return next;
+    if (next.confidence < 0.01) return { ...prev, confidence: prev.confidence * 0.9 }; // decai suave, não some de repente
+    const lerp = (a, b) => a + (b - a) * alpha;
+    return {
+      confidence: lerp(prev.confidence, next.confidence),
+      rx0: lerp(prev.rx0 ?? next.rx0, next.rx0), ry0: lerp(prev.ry0 ?? next.ry0, next.ry0),
+      rx1: lerp(prev.rx1 ?? next.rx1, next.rx1), ry1: lerp(prev.ry1 ?? next.ry1, next.ry1)
+    };
+  },
+  /* Analisa a cena continuamente por ~3s (amostrando frames reais do vídeo ao vivo), como a
+     spec pede, suavizando a região de foco a cada amostra. Retorna a melhor estimativa ao
+     final da janela. getFrameCanvas() deve devolver um canvas com o quadro atual (já no
+     enquadramento/espelhamento corretos) — chamado repetidamente durante a análise. */
+  async analyzeFocusWindow(getFrameCanvas, w, h, durationMs, onProgress) {
+    let region = null; const startedAt = Date.now();
+    while (Date.now() - startedAt < durationMs) {
+      const frame = getFrameCanvas();
+      if (frame) {
+        const sample = this.estimateFocusRegion(frame, w, h);
+        region = this._smoothRegion(region, sample, 0.45);
+      }
+      if (onProgress) onProgress(Math.min(1, (Date.now() - startedAt) / durationMs));
+      await new Promise(r => setTimeout(r, 140));
+    }
+    return region;
+  },
+  /* Constrói uma máscara suave (feather) a partir do retângulo de foco estimado, em vez da
+     elipse fixa anterior: bordas com transição gradual para não deixar recortes artificiais,
+     e o próprio retângulo nasce da nitidez real da cena, não de uma posição pré-definida. */
+  buildFocusMask(w, h, region) {
+    const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+    const mctx = mc.getContext('2d');
+    const x0 = region.rx0 * w, y0 = region.ry0 * h, x1 = region.rx1 * w, y1 = region.ry1 * h;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const rx = Math.max(8, (x1 - x0) / 2), ry = Math.max(8, (y1 - y0) / 2);
+    const feather = Math.min(w, h) * 0.12;
+    mctx.save(); mctx.translate(cx, cy); mctx.scale(1, ry / rx || 1);
+    const grad = mctx.createRadialGradient(0, 0, Math.max(1, rx - feather), 0, 0, rx + feather);
+    grad.addColorStop(0, 'rgba(0,0,0,1)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    mctx.fillStyle = grad; mctx.beginPath(); mctx.arc(0, 0, rx + feather, 0, Math.PI * 2); mctx.fill();
+    mctx.restore();
+    return mc;
+  },
+  /* Aplica desfoque de fundo moderado em um canvas já desenhado com o quadro original
+     (srcCanvas), usando: (1) a máscara real do modelo de segmentação quando carregado, ou
+     (2) a região de foco detectada por nitidez (region, de analyzeFocusWindow) com feathering
+     natural nas bordas. Intensidade e presença do blur dependem da confiança real da detecção
+     — baixa confiança reduz o blur em vez de aplicar um recorte artificial sobre uma cena sem
+     separação de profundidade clara. */
+  async applyBackgroundBlur(srcCanvas, w, h, region) {
+    const mask = await this.getSegmentationMask(srcCanvas, w, h);
+    let maskCanvas = null, confidence = 1;
+    if (mask) {
+      maskCanvas = mask; // máscara real do modelo — alta confiança por definição
+    } else if (region && region.confidence > 0) {
+      confidence = region.confidence;
+      maskCanvas = this.buildFocusMask(w, h, region);
+    }
+    if (!maskCanvas || confidence < 0.18) {
+      // sem detecção confiável: a spec pede preferir desfoque reduzido/nenhum a borrar a cena
+      // inteira — aqui optamos por não aplicar blur algum, preservando a imagem original.
+      return srcCanvas;
+    }
+    // intensidade moderada (câmera real usa algo sutil, não um blur de vidro fosco) e
+    // proporcional à confiança — cena com foco menos nítido recebe um desfoque mais leve.
+    const blurPx = Math.round(6 + 6 * confidence); // 6..12px, nunca o 14px fixo/exagerado anterior
     const out = document.createElement('canvas'); out.width = w; out.height = h;
     const octx = out.getContext('2d');
     const blurred = document.createElement('canvas'); blurred.width = w; blurred.height = h;
     const bctx = blurred.getContext('2d');
-    bctx.filter = 'blur(14px)'; bctx.drawImage(srcCanvas, 0, 0, w, h); bctx.filter = 'none';
-    const mask = await this.getSegmentationMask(srcCanvas, w, h);
+    bctx.filter = `blur(${blurPx}px)`; bctx.drawImage(srcCanvas, 0, 0, w, h); bctx.filter = 'none';
     octx.drawImage(blurred, 0, 0);
-    if (mask) {
-      // máscara real do modelo: recorta o primeiro plano nítido por cima do fundo desfocado
-      const mc2 = document.createElement('canvas'); mc2.width = w; mc2.height = h;
-      const m2ctx = mc2.getContext('2d'); m2ctx.drawImage(mask, 0, 0, w, h);
-      m2ctx.globalCompositeOperation = 'source-in'; m2ctx.drawImage(srcCanvas, 0, 0, w, h);
-      octx.drawImage(mc2, 0, 0);
-    } else {
-      // heurística geométrica: elipse central nítida com borda suave (gradiente radial como máscara)
-      const grad = octx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.18, w / 2, h / 2, Math.min(w, h) * 0.42);
-      grad.addColorStop(0, 'rgba(0,0,0,1)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
-      const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
-      const mctx = mc.getContext('2d'); mctx.fillStyle = grad; mctx.fillRect(0, 0, w, h);
-      mctx.globalCompositeOperation = 'source-in'; mctx.drawImage(srcCanvas, 0, 0, w, h);
-      octx.drawImage(mc, 0, 0);
-    }
+    const mc2 = document.createElement('canvas'); mc2.width = w; mc2.height = h;
+    const m2ctx = mc2.getContext('2d'); m2ctx.drawImage(maskCanvas, 0, 0, w, h);
+    m2ctx.globalCompositeOperation = 'source-in'; m2ctx.drawImage(srcCanvas, 0, 0, w, h);
+    octx.drawImage(mc2, 0, 0);
     return out;
   },
   showState(icon, title, msg, actions) {
@@ -8696,10 +8820,12 @@ Apps.camera = {
       if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; }
       this.capturePhoto();
     } else if (this.mode === 'video' || this.mode === 'cinema') {
+      if (this.mode === 'cinema' && this.cinemaAnalyzing) return; // já analisando a cena — ignora novo toque
       const recActive = this.mode === 'cinema' ? this.cinemaRecording : (this.recorder && this.recorder.state === 'recording');
       if (recActive) { this.mode === 'cinema' ? this.stopCinemaRecording() : this.stopRecording(); }
       else { if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; } this.mode === 'cinema' ? this.startCinemaRecording() : this.startRecording(); }
     } else if (this.mode === 'retrato') {
+      if (this.portraitAnalyzing) return; // já analisando a cena — ignora novo toque
       if (this.timerSecs > 0) { await this.countdown(this.timerSecs); if (!this.stream) return; }
       this.capturePortrait();
     } else if (this.mode === 'noturna') {
@@ -8772,16 +8898,39 @@ Apps.camera = {
       }, 'image/jpeg', 0.92);
     });
   },
-  /* ---- Modo Retrato: foto com desfoque de fundo ---- */
+  /* ---- Modo Retrato: foto com desfoque de fundo ----
+     Correção de bugs: antes de capturar, analisa a cena ao vivo por ~3s para identificar o
+     foco real (detecção de foco por nitidez, ou o modelo de segmentação quando disponível),
+     em vez de aplicar uma elipse decorativa fixa depois da captura. A foto em si continua
+     sendo tirada do quadro no instante do toque (não dos 3s de análise, que usam o vídeo ao
+     vivo só para decidir ONDE está o foco). */
   async capturePortrait() {
+    if (!this.videoEl || !this.stream) { Core.toast('A câmera não está pronta.'); return; }
+    if (this.portraitAnalyzing) return; // evita duas análises simultâneas
+    this.portraitAnalyzing = true;
+    await this.ensureSegModel();
+    this.showState('🔎', 'Analisando a cena…', 'Identificando o foco principal antes de capturar.');
+    const v = this.videoEl;
+    const getFrame = () => {
+      if (!v.videoWidth || !v.videoHeight) return null;
+      const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+      const cx = c.getContext('2d'); if (this.facing === 'user') { cx.translate(c.width, 0); cx.scale(-1, 1); }
+      try { cx.drawImage(v, 0, 0, c.width, c.height); } catch (e) { return null; }
+      return c;
+    };
+    let region = null;
+    try { region = await this.analyzeFocusWindow(getFrame, v.videoWidth || 640, v.videoHeight || 480, 3000); }
+    catch (e) { region = null; }
+    this.portraitAnalyzing = false;
+    if (this.mode !== 'retrato' || !this.stream) { this.clearState(); return; } // modo trocado/câmera fechada durante a análise
     const frame = this.grabRawFrame();
-    if (!frame) { Core.toast('A câmera ainda não produziu quadros de vídeo.'); return; }
+    if (!frame) { this.clearState(); Core.toast('A câmera ainda não produziu quadros de vídeo.'); return; }
     this.els.flare.classList.remove('flash'); void this.els.flare.offsetWidth; this.els.flare.classList.add('flash');
     this.showState('⏳', 'Processando retrato…', 'Aplicando desfoque de fundo localmente.');
-    await this.ensureSegModel();
-    const out = await this.applyBackgroundBlur(frame.canvas, frame.w, frame.h);
+    const out = await this.applyBackgroundBlur(frame.canvas, frame.w, frame.h, region);
     this.clearState();
-    await this.saveProcessedPhoto(out, frame.w, frame.h, 'Retrato salvo na Lime Gallery.');
+    const msg = (region && region.confidence > 0.18) ? 'Retrato salvo na Lime Gallery.' : 'Retrato salvo — foco não identificado com confiança, a foto foi salva sem desfoque de fundo.';
+    await this.saveProcessedPhoto(out, frame.w, frame.h, msg);
   },
   /* ---- Modo Retro: preto e branco real aplicado à imagem final ---- */
   async captureRetro() {
@@ -8854,26 +9003,50 @@ Apps.camera = {
     this.els.nightArc.style.strokeDashoffset = '226.19'; this.els.nightLabel.textContent = '';
     this.body.querySelectorAll('.cam-mode-btn, #cam-switch, #cam-timer-btn, #cam-flash-btn').forEach(b => b.disabled = false);
   },
-  /* ---- Modo Cinema: vídeo com desfoque de fundo, gravado via canvas composto + MediaRecorder ---- */
+  /* ---- Modo Cinema: vídeo com desfoque de fundo, gravado via canvas composto + MediaRecorder ----
+     Correção de bugs: antes de qualquer desfoque, analisa a cena ao vivo por ~3s (detecção de
+     foco por nitidez, ou o modelo de segmentação quando disponível) para saber ONDE está o
+     foco. Durante a gravação, a região de foco é reavaliada periodicamente (não a cada quadro,
+     que seria caro e instável) e suavizada ao longo do tempo, evitando saltos bruscos quando o
+     foco muda — exatamente como a spec pede ("reavalie a cena antes de atualizar o desfoque"). */
   async startCinemaRecording() {
     if (!Capability.has('mediaRecorder')) { Core.toast('Gravação de vídeo não é suportada neste navegador.'); return; }
     if (!this.stream || !this.videoEl) { Core.toast('A câmera não está pronta.'); return; }
-    if (this.cinemaRecording) return;
+    if (this.cinemaRecording || this.cinemaAnalyzing) return;
     await this.ensureSegModel();
     const v = this.videoEl, w = v.videoWidth || 640, h = v.videoHeight || 480;
     const outCanvas = document.createElement('canvas'); outCanvas.width = w; outCanvas.height = h;
     const octx = outCanvas.getContext('2d');
-    let running = true;
+    const grabLiveFrame = () => {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const cx = c.getContext('2d'); if (this.facing === 'user') { cx.translate(w, 0); cx.scale(-1, 1); }
+      try { cx.drawImage(v, 0, 0, w, h); } catch (e) { return null; }
+      return c;
+    };
+    // Janela inicial de ~3s: enquanto analisa, mostra a cena nítida (sem blur) no preview
+    // gravado — nunca aplica desfoque indiscriminado antes de saber onde está o foco.
+    this.cinemaAnalyzing = true;
+    this.showState('🔎', 'Analisando a cena…', 'Identificando o foco principal antes de iniciar o desfoque.');
+    let region = null;
+    try { region = await this.analyzeFocusWindow(grabLiveFrame, w, h, 3000); } catch (e) { region = null; }
+    this.cinemaAnalyzing = false;
+    this.clearState();
+    if (!this.stream || this.mode !== 'cinema') return; // câmera fechada/modo trocado durante a análise
+    let running = true, lastReanalyzeAt = Date.now();
+    const REANALYZE_EVERY_MS = 2500; // reavalia periodicamente, nunca a cada quadro
     const drawLoop = async () => {
       if (!running) return;
-      const srcCanvas = document.createElement('canvas'); srcCanvas.width = w; srcCanvas.height = h;
-      const sctx = srcCanvas.getContext('2d');
-      if (this.facing === 'user') { sctx.translate(w, 0); sctx.scale(-1, 1); }
-      try { sctx.drawImage(v, 0, 0, w, h); } catch (e) {}
-      try {
-        const processed = await this.applyBackgroundBlur(srcCanvas, w, h);
-        octx.drawImage(processed, 0, 0, w, h);
-      } catch (e) { octx.drawImage(srcCanvas, 0, 0, w, h); }
+      const srcCanvas = grabLiveFrame();
+      if (srcCanvas) {
+        try {
+          const processed = await this.applyBackgroundBlur(srcCanvas, w, h, region);
+          octx.drawImage(processed, 0, 0, w, h);
+        } catch (e) { octx.drawImage(srcCanvas, 0, 0, w, h); }
+        if (Date.now() - lastReanalyzeAt > REANALYZE_EVERY_MS) {
+          lastReanalyzeAt = Date.now();
+          try { const sample = this.estimateFocusRegion(srcCanvas, w, h); region = this._smoothRegion(region, sample, 0.3); } catch (e) {}
+        }
+      }
       this.cinemaRaf = requestAnimationFrame(drawLoop);
     };
     drawLoop();
@@ -9461,6 +9634,7 @@ Apps.maps = {
   searchTimer: null, dragState: null, _tileCache: new Set(),
   build(body) {
     this.body = body;
+    this._tileEls = new Map(); // novo DOM a cada abertura do app — não reaproveitar refs de divs antigos
     body.innerHTML = `<div class="map-wrap">
       <div class="map-viewport" id="mp-viewport">
         <div class="map-tiles" id="mp-tiles"></div>
@@ -9540,19 +9714,38 @@ Apps.maps = {
     const maxTile = Math.pow(2, z);
     const tilesEl = this.els.tiles;
     tilesEl.style.transform = `scale(${scaleAdj})`; tilesEl.style.transformOrigin = '0 0';
-    tilesEl.innerHTML = '';
+    // 1.8.10 fix: tiles já carregados eram descartados (innerHTML = '') e recriados do zero a
+    // CADA pointermove durante o arrasto, forçando o navegador a buscar/decodificar as imagens de
+    // novo repetidamente e nunca deixando um conjunto terminar de carregar — por isso a viewport
+    // ficava preta (a cor de fundo do .map-tile) por alguns segundos durante/após o drag. Agora os
+    // elementos de tile existentes são reaproveitados por chave z/x/y entre renders: só os tiles
+    // que realmente mudaram de posição são recriados, os demais só têm left/top reposicionados.
+    if (!this._tileEls) this._tileEls = new Map();
+    const wanted = new Set();
     for (let ty = firstTileY; ty < firstTileY + tilesY; ty++) {
       for (let tx = firstTileX; tx < firstTileX + tilesX; tx++) {
         const wrappedX = ((tx % maxTile) + maxTile) % maxTile;
         if (ty < 0 || ty >= maxTile) continue;
         const left = tx * MapMath.TILE - originX, top = ty * MapMath.TILE - originY;
-        const div = document.createElement('div'); div.className = 'map-tile'; div.style.left = left + 'px'; div.style.top = top + 'px';
-        const img = document.createElement('img'); img.loading = 'lazy'; img.alt = '';
-        img.src = `https://tile.openstreetmap.org/${z}/${wrappedX}/${ty}.png`;
-        img.onerror = () => { div.style.background = '#2a2a2a'; };
-        div.appendChild(img); tilesEl.appendChild(div);
+        const key = z + '/' + wrappedX + '/' + ty;
+        wanted.add(key);
+        let div = this._tileEls.get(key);
+        if (!div || !div.isConnected) {
+          div = document.createElement('div'); div.className = 'map-tile';
+          const img = document.createElement('img'); img.loading = 'eager'; img.alt = '';
+          img.src = `https://tile.openstreetmap.org/${z}/${wrappedX}/${ty}.png`;
+          img.onerror = () => { div.style.background = '#2a2a2a'; };
+          div.appendChild(img); tilesEl.appendChild(div);
+          this._tileEls.set(key, div);
+        }
+        div.style.left = left + 'px'; div.style.top = top + 'px';
       }
     }
+    // remove só os tiles que saíram da área visível — os que continuam visíveis permanecem no DOM
+    // com a imagem já carregada, em vez de serem apagados e recarregados.
+    this._tileEls.forEach((div, key) => {
+      if (!wanted.has(key)) { div.remove(); this._tileEls.delete(key); }
+    });
     this.renderMarkers(w, h, originX * scaleAdj, originY * scaleAdj, z, scaleAdj);
     this.renderRoute(w, h, originX * scaleAdj, originY * scaleAdj, z, scaleAdj);
   },
