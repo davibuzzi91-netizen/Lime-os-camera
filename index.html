@@ -1935,17 +1935,6 @@ body.eco-mode .module-card, body.eco-mode .back-btn, body.eco-mode .icon-btn, bo
     <div class="panel-body" id="body-perfil"></div>
   </div>
 
-  <div class="panel" id="panel-ai">
-    <div class="panel-header"><button class="back-btn" onclick="closeModule('ai')">←</button><h2>LifeOS AI</h2></div>
-    <div class="panel-body" id="body-ai" style="display:flex; flex-direction:column;">
-      <div id="ai-messages" style="flex:1;"></div>
-      <div class="ai-input-bar">
-        <input type="text" id="ai-input" placeholder="Pergunte algo... ex: o que eu tenho amanhã?" onkeydown="if(event.key==='Enter')sendAI()">
-        <button class="ai-send" onclick="sendAI()">➤</button>
-      </div>
-    </div>
-  </div>
-
   <div id="toast" class="toast"></div>
 </div>
 
@@ -2604,7 +2593,7 @@ function renderModule(id){
   const fn = {
     brief:renderBriefFull,
     tarefas:renderTarefas, agenda:renderAgenda, metas:renderMetas, habitos:renderHabitos,
-    trabalhos:renderTrabalhos, notas:renderNotasBoletim, config:renderConfig, perfil:renderPerfil, ai:renderAI,
+    trabalhos:renderTrabalhos, notas:renderNotasBoletim, config:renderConfig, perfil:renderPerfil,
     aulas:renderAulas, assuntos:renderAssuntos, loja:renderStore,
     checklist:renderChecklist, vocabulario:renderVocabulario, gaming:renderGaming,
     biblioteca:renderBiblioteca, galeria:renderGaleria, estatisticas:renderEstatisticas,
@@ -3706,92 +3695,6 @@ function saveProfile(){
   DB.profile.name = document.getElementById('pf-name').value.trim();
   DB.profile.bio = document.getElementById('pf-bio').value.trim();
   saveDB(); renderAll(); toast('Perfil salvo!');
-}
-
-/* ---------------- LIFEOS AI ---------------- */
-function looksLikeHomework(q){
-  const ql=q.toLowerCase();
-  const mathPattern = /\d+\s*[\+\-\*x×÷\/\^]\s*\d+/;
-  const keywords = ['quanto é','resolve essa','resolve a','resultado de','resposta da questão','me dá a resposta','qual a resposta','faz essa conta','resolve essa equação','me responde essa pergunta','me responde essa questão','faz meu dever','faz minha tarefa de'];
-  return mathPattern.test(q) || keywords.some(k=>ql.includes(k));
-}
-function renderAI(){
-  const box=document.getElementById('ai-messages');
-  if(box.children.length===0){
-    addAIMessage('bot', 'Oi! Eu sou a LifeOS AI. Posso consultar suas tarefas, agenda, provas e metas — pergunte, por exemplo, "o que eu tenho amanhã?". Também posso ajudar você a estudar, mas em vez de dar a resposta pronta de exercícios, eu vou te guiar até você mesmo entender. 😉');
-  }
-}
-function addAIMessage(who, text){
-  const box=document.getElementById('ai-messages');
-  const div=document.createElement('div');
-  div.className='ai-msg '+who;
-  div.textContent=text;
-  box.appendChild(div);
-  box.parentElement.scrollTop = box.parentElement.scrollHeight;
-}
-function sendAI(){
-  const input=document.getElementById('ai-input');
-  const q=input.value.trim();
-  if(!q) return;
-  addAIMessage('user', q);
-  input.value='';
-  setTimeout(()=>{ addAIMessage('bot', answerAI(q)); }, 300);
-}
-function answerAI(q){
-  const ql = q.toLowerCase();
-  const today = todayStr();
-
-  if(looksLikeHomework(q)){
-    return 'Essa parece uma questão de estudo (tipo de prova ou trabalho)! Eu não vou só te dar a resposta de bandeja — bora pensar junto? Me conta: qual foi o passo que você já tentou, ou o que você lembra sobre esse assunto? Se você me mostrar seu raciocínio, eu te ajudo a chegar na resposta certa e confirmo se você realmente entendeu.';
-  }
-
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const tomStr = tomorrow.toISOString().slice(0,10);
-
-  if(ql.includes('amanhã')){
-    const items=[];
-    DB.tasks.filter(t=>t.date===tomStr && !t.done).forEach(t=>items.push('Tarefa: '+t.title));
-    DB.agenda.filter(e=>e.date===tomStr).forEach(e=>items.push(e.title));
-    DB.trabalhos.filter(t=>t.date===tomStr).forEach(t=>items.push((t.type==='prova'?'Prova':'Trabalho')+': '+t.title));
-    return items.length? 'Amanhã você tem: '+items.join('; ')+'.' : 'Amanhã não tem nada registrado ainda.';
-  }
-  if(ql.includes('tarefa')){
-    const pend=DB.tasks.filter(t=>!t.done);
-    return pend.length? 'Suas tarefas pendentes: '+pend.map(t=>t.title+(t.date?' ('+fmtDate(t.date)+')':'')).join('; ')+'.' : 'Você não tem tarefas pendentes. 🎉';
-  }
-  if(ql.includes('prova') || ql.includes('trabalho')){
-    const upcoming=DB.trabalhos.filter(t=>t.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
-    return upcoming.length? 'Próximos: '+upcoming.map(t=>(t.type==='prova'?'Prova':'Trabalho')+' "'+t.title+'" em '+fmtDate(t.date)).join('; ')+'.' : 'Nenhuma prova ou trabalho registrado.';
-  }
-  if(ql.includes('meta')){
-    return DB.goals.length? 'Suas metas: '+DB.goals.map(g=>g.title+' ('+g.progress+'%)').join('; ')+'.' : 'Você ainda não criou metas.';
-  }
-  if(ql.includes('progresso')){
-    if(DB.goals.length===0) return 'Você ainda não tem metas para acompanhar progresso.';
-    const avg = Math.round(DB.goals.reduce((s,g)=>s+g.progress,0)/DB.goals.length);
-    return 'Seu progresso médio nas metas é de '+avg+'%.';
-  }
-  if(ql.includes('agenda') || ql.includes('evento')){
-    const up=DB.agenda.filter(e=>e.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
-    return up.length? 'Próximos eventos: '+up.map(e=>e.title+' em '+fmtDate(e.date)).join('; ')+'.' : 'Nenhum evento futuro na agenda.';
-  }
-  if(ql.includes('assunto') || ql.includes('nas aulas') || ql.includes('na aula')){
-    const found = DB.assuntos.filter(a=> normalizeSearch(a.aulaName).includes(normalizeSearch(ql)) || ql.includes(normalizeSearch(a.aulaName)));
-    const list = found.length ? found : DB.assuntos.slice(-5);
-    return list.length ? 'Assuntos registrados: '+list.map(a=>(a.aulaName?a.aulaName+' ('+fmtDate(a.date)+'): ':fmtDate(a.date)+': ')+a.content).join(' | ') : 'Você ainda não registrou nenhum assunto. Vai lá em Assuntos!';
-  }
-  if(ql.includes('nota')){
-    const done = DB.trabalhos.filter(t=>t.grade!=null && t.grade!=='');
-    return done.length ? 'Suas notas registradas: '+done.map(t=>t.title+': '+t.grade).join('; ')+'.' : 'Você ainda não registrou nenhuma nota em Notas.';
-  }
-  if(ql.includes('hoje')){
-    const items=[];
-    DB.tasks.filter(t=>t.date===today && !t.done).forEach(t=>items.push('Tarefa: '+t.title));
-    DB.agenda.filter(e=>e.date===today).forEach(e=>items.push(e.title));
-    DB.trabalhos.filter(t=>t.date===today).forEach(t=>items.push((t.type==='prova'?'Prova':'Trabalho')+': '+t.title));
-    return items.length? 'Hoje você tem: '+items.join('; ')+'.' : 'Hoje não tem nada registrado.';
-  }
-  return 'Posso responder sobre tarefas, agenda, provas/trabalhos, metas e progresso. Tenta perguntar de outro jeito!';
 }
 
 /* ---------------- INITIAL RENDER ---------------- */
@@ -7518,8 +7421,13 @@ Apps.music = Music15;
    uma resposta de IA — todo envio recebe um estado honesto de
    "nenhum serviço configurado ainda".
    ===================================================================== */
+// Chave do Gemini 2.5 Flash. Fica exposta no código-fonte do lado do
+// cliente (inevitável sem um backend) — ok para uso pessoal, mas não
+// cole esse arquivo em repositório público sem saber desse risco.
+const GEMINI_API_KEY = 'AQ.Ab8RNGK2XM6TgCa_N8d3RAZZAbfjsoHUvwlahqZk5UEpfJfotA';
+
 const AI15 = {
-  messages: [], sending: false,
+  messages: [], sending: false, context: [],
   build(body) {
     this.messages = Storage.get('ai.history', []);
     body.innerHTML = `<div class="ai-wrap">
@@ -7537,7 +7445,7 @@ const AI15 = {
   },
   paint() {
     this.msgsEl.innerHTML = '';
-    if (!this.messages.length) { this.msgsEl.innerHTML = '<div class="ai-empty">✨<br>Envie uma mensagem para começar.<br><span class="card-sub">O Lime AI ainda não tem um serviço de inteligência artificial conectado nesta versão.</span></div>'; return; }
+    if (!this.messages.length) { this.msgsEl.innerHTML = '<div class="ai-empty">✨<br>Envie uma mensagem para começar.<br><span class="card-sub">Pergunte algo, ex: "o que eu tenho amanhã?"</span></div>'; return; }
     this.messages.forEach(m => { const b = el(`<div class="ai-msg ${m.role}${m.notice ? ' notice' : ''}">${m.text}</div>`); this.msgsEl.appendChild(b); });
     this.msgsEl.scrollTop = this.msgsEl.scrollHeight;
   },
@@ -7549,17 +7457,50 @@ const AI15 = {
     this.sending = true; this.sendBtn.classList.add('disabled');
     this.messages.push({ role: 'user', text: this.escapeHtml(text) }); this.input.value = ''; this.persist(); this.paint();
     const typing = el('<div class="ai-typing"><i></i><i></i><i></i></div>'); this.msgsEl.appendChild(typing); this.msgsEl.scrollTop = this.msgsEl.scrollHeight;
-    await new Promise(r => setTimeout(r, 450)); // pequeno delay só para a UI não parecer instantânea/quebrada
+    let replyText;
+    try {
+      replyText = await this.callGemini(text);
+    } catch (err) {
+      console.error('Gemini error:', err);
+      replyText = '⚠️ Não consegui falar com a IA agora (' + err.message + '). Tenta de novo em instantes.';
+    }
     typing.remove();
-    this.messages.push({ role: 'bot', notice: true, text: 'O Lime AI ainda não tem um serviço de inteligência artificial configurado nesta versão da LimeOS. Nenhuma resposta real foi gerada.' });
+    this.messages.push({ role: 'bot', text: this.escapeHtml(replyText) });
     this.persist(); this.paint(); this.sending = false; this.sendBtn.classList.remove('disabled');
+  },
+  async callGemini(userText) {
+    if (!GEMINI_API_KEY) throw new Error('nenhuma chave de API configurada');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const systemPrompt = 'Você é o Lime AI, assistente dentro do LimeOS, um sistema de produtividade pessoal. Responda sempre em português do Brasil, de forma breve, direta e amigável. Se a pergunta for claramente uma tarefa de prova/dever de casa, não dê a resposta pronta — ajude a pessoa a chegar lá sozinha, fazendo perguntas guiadas.';
+    this.context.push({ role: 'user', parts: [{ text: userText }] });
+    const payload = {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: this.context,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 400 }
+    };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      let detail = resp.status;
+      try { const errBody = await resp.json(); detail = errBody.error?.message || detail; } catch (_) {}
+      throw new Error('erro ' + detail);
+    }
+    const data = await resp.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) throw new Error('resposta vazia da API');
+    this.context.push({ role: 'model', parts: [{ text: reply }] });
+    if (this.context.length > 20) this.context = this.context.slice(-20); // mantém só as últimas trocas
+    return reply;
   },
   escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
   confirmClear() {
     if (!this.messages.length) return;
     FM.modal('Limpar histórico?', '<div class="card-sub">Todas as mensagens desta conversa serão apagadas. Esta ação não pode ser desfeita.</div>', [
       { label: 'Cancelar', onClick: (m) => m.remove() },
-      { label: 'Limpar', primary: true, onClick: (m) => { this.messages = []; this.persist(); this.paint(); m.remove(); } }
+      { label: 'Limpar', primary: true, onClick: (m) => { this.messages = []; this.context = []; this.persist(); this.paint(); m.remove(); } }
     ]);
   }
 };

@@ -1,7 +1,7 @@
 {
   "name": "LimeOS",
   "short_name": "LimeOS",
-  "description": "LimeOS 1.8.10 — Beta experimental",
+  "description": "LimeOS 1.8.11 — Gemini 2.5 Flash AI Integration",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
